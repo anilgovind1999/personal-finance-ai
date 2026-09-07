@@ -75,6 +75,12 @@ export const MERCHANTS: MerchantEntry[] = [
   { name: 'Reliance Fresh', aliases: ['reliance fresh', 'reliance smart'], category: 'Grocery', subcategory: 'Supermarket' },
   { name: "More Supermarket", aliases: ['more supermarket', 'more megastore'], category: 'Grocery', subcategory: 'Supermarket' },
   { name: 'Spencers', aliases: ['spencer', 'spencers'], category: 'Grocery', subcategory: 'Supermarket' },
+  { name: 'Big Bazaar', aliases: ['big bazaar', 'bigbazaar', 'smart bazaar'], category: 'Grocery', subcategory: 'Supermarket' },
+  { name: 'Star Bazaar', aliases: ['star bazaar'], category: 'Grocery', subcategory: 'Supermarket' },
+  { name: 'Vishal Mega Mart', aliases: ['vishal mega mart'], category: 'Grocery', subcategory: 'Supermarket' },
+  { name: 'Nilgiris', aliases: ['nilgiris'], category: 'Grocery', subcategory: 'Supermarket' },
+  { name: 'Ratnadeep', aliases: ['ratnadeep'], category: 'Grocery', subcategory: 'Supermarket' },
+  { name: 'Lulu Hypermarket', aliases: ['lulu hypermarket', 'lulu market'], category: 'Grocery', subcategory: 'Supermarket' },
   { name: 'Licious', aliases: ['licious'], category: 'Grocery', subcategory: 'Meat & Fish' },
   { name: 'Country Delight', aliases: ['country delight'], category: 'Grocery', subcategory: 'Dairy' },
 
@@ -185,7 +191,7 @@ export const MERCHANTS: MerchantEntry[] = [
  */
 export const CATEGORY_KEYWORDS: Record<string, Array<[string, number]>> = {
   'Food & Dining': [['lunch', 3], ['dinner', 3], ['breakfast', 3], ['brunch', 3], ['restaurant', 3], ['hotel food', 2], ['food', 2.5], ['meal', 2.5], ['snack', 2], ['tea', 1.5], ['coffee', 2], ['pizza', 2.5], ['burger', 2.5], ['biryani', 3], ['dosa', 2.5], ['thali', 2.5], ['cafe', 2], ['canteen', 2.5], ['tiffin', 2.5], ['sweets', 2], ['bakery', 2.5], ['juice', 1.5], ['ice cream', 2.5], ['dine', 2], ['takeaway', 2], ['eatery', 2.5], ['mess bill', 2.5]],
-  Grocery: [['grocery', 4], ['groceries', 4], ['supermarket', 3], ['vegetables', 3], ['veggies', 3], ['fruits', 2.5], ['provisions', 3], ['kirana', 3.5], ['milk', 2], ['rice bag', 2.5], ['atta', 2.5], ['household items', 2.5], ['ration', 3]],
+  Grocery: [['grocery', 4], ['groceries', 4], ['supermarket', 3], ['hypermarket', 3], ['vegetables', 3], ['veggies', 3], ['fruits', 2.5], ['provisions', 3], ['kirana', 3.5], ['milk', 2], ['rice', 1.5], ['atta', 2.5], ['household items', 2.5], ['ration', 3], ['dal', 1.5], ['toor dal', 2], ['basmati', 2], ['sugar', 1.5], ['salt', 1.2], ['flour', 1.5], ['masala', 1.5], ['detergent', 2], ['soap', 1.5], ['shampoo', 1.5], ['biscuit', 1.5], ['sunflower oil', 2], ['cooking oil', 2.5], ['bread', 1.5], ['eggs', 1.5], ['curd', 1.5], ['paneer', 1.8], ['onion', 1.5], ['potato', 1.5], ['tomato', 1.5]],
   Fuel: [['petrol', 4], ['diesel', 4], ['fuel', 4], ['refuel', 4], ['gas station', 3], ['filling station', 3], ['cng', 3.5], ['ev charging', 3.5], ['pump', 1.5], ['tank full', 3]],
   Family: [['mother', 2.5], ['father', 2.5], ['mom', 2.5], ['dad', 2.5], ['parents', 3], ['wife', 2.5], ['husband', 2.5], ['son', 2], ['daughter', 2], ['kids', 2], ['family', 3], ['maid', 2.5], ['househelp', 2.5], ['pocket money', 2.5]],
   'Friends & Social': [['friend', 3], ['friends', 3], ['party', 2.5], ['outing', 2.5], ['get together', 3], ['treat', 2], ['split', 2], ['settled with', 2.5], ['reunion', 2.5]],

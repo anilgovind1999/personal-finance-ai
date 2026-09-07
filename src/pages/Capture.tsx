@@ -16,6 +16,26 @@ const SOURCES: Array<{ value: CaptureSource; label: string }> = [
   { value: 'text', label: 'Typed note' },
 ];
 
+/**
+ * The OCR runtime is served from this app's own origin. `scripts/vendor-ocr.mjs`
+ * copies these out of node_modules into public/tesseract at install and build
+ * time; BASE_URL keeps them correct when the app is hosted under a sub-path.
+ */
+const OCR_BASE = `${import.meta.env.BASE_URL}tesseract/`.replace(/\/{2,}/g, '/');
+const OCR_ASSET_PATHS = {
+  workerPath: `${OCR_BASE}worker.min.js`,
+  corePath: `${OCR_BASE}core`,
+  langPath: `${OCR_BASE}lang`,
+};
+
+function ocrErrorMessage(err: unknown): string {
+  const detail = err instanceof Error ? err.message : String(err);
+  if (/importScripts|failed to load|fetch|network|404/i.test(detail)) {
+    return 'The OCR engine could not be loaded. If you are running a local build, run "npm run vendor:ocr" and rebuild. You can still enter the receipt manually.';
+  }
+  return `Could not read this file (${detail}). Type the details in manually instead.`;
+}
+
 const SAMPLES = [
   'Paid ₹250 for lunch',
   'Petrol filled for ₹2,000',
@@ -181,6 +201,7 @@ function ReceiptCapture({
 }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState('');
   const [ocrText, setOcrText] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
   const [attachmentId, setAttachmentId] = useState<string | undefined>();
@@ -199,16 +220,21 @@ function ReceiptCapture({
       // Loaded lazily: the OCR bundle is large and only this screen needs it.
       const { default: Tesseract } = await import('tesseract.js');
       const { data } = await Tesseract.recognize(file, 'eng', {
+        // Served from our own origin rather than tesseract.js's default CDN, so
+        // the scanner works offline and no third party sees the receipt.
+        ...OCR_ASSET_PATHS,
         logger: (m: { status: string; progress: number }) => {
           if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
+          else if (m.status) setStage(m.status);
         },
       });
       setOcrText(data.text);
       if (!data.text.trim()) onError('No text could be read from that image');
-    } catch {
-      onError('Could not run OCR on this file. Type the details in manually instead.');
+    } catch (err) {
+      onError(ocrErrorMessage(err));
     } finally {
       setBusy(false);
+      setStage('');
     }
   };
 
@@ -233,7 +259,9 @@ function ReceiptCapture({
 
       {busy && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted">Reading the receipt… {progress}%</p>
+          <p className="text-xs font-medium text-muted">
+            {progress > 0 ? `Reading the receipt… ${progress}%` : stage ? `${stage}…` : 'Starting the scanner…'}
+          </p>
           <div className="h-1.5 w-full overflow-hidden rounded-pill bg-line">
             <div className="h-full rounded-pill bg-accent transition-[width]" style={{ width: `${Math.max(6, progress)}%` }} />
           </div>

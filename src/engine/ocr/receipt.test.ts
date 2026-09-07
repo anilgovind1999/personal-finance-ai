@@ -59,6 +59,12 @@ describe('receipt OCR extraction', () => {
     expect(r.isTransaction).toBe(true);
   });
 
+  it('categorises a supermarket receipt from its item names', () => {
+    const r = extractionFromReceipt(RECEIPT);
+    expect(r.category.value).toBe('Grocery');
+    expect(r.merchant.value).toMatch(/big bazaar/i);
+  });
+
   it('falls back to the largest amount when no total line is printed', () => {
     const f = extractReceiptFields('CHAI POINT\nTea 40.00\nSamosa 25.00\n65.00');
     expect(f.total).toBe(65);

@@ -8,3 +8,6 @@ coverage
 *.tsbuildinfo
 .env
 .env.local
+
+# OCR runtime is copied out of node_modules by scripts/vendor-ocr.mjs
+public/tesseract/

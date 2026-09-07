@@ -5,14 +5,19 @@
   "type": "module",
   "description": "AI-powered personal finance & expense intelligence app",
   "scripts": {
+    "predev": "node scripts/vendor-ocr.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/vendor-ocr.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "postinstall": "node scripts/vendor-ocr.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "vendor:ocr": "node scripts/vendor-ocr.mjs"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
     "jspdf": "^2.5.2",
@@ -20,7 +25,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.0",
-    "tesseract.js": "^5.1.1"
+    "tesseract.js": "^5.1.1",
+    "tesseract.js-core": "^5.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",

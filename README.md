@@ -47,6 +47,9 @@ upload.
 - In-browser OCR (Tesseract), then structured extraction of merchant, date,
   grand total (never the sub-total), GST — including split CGST/SGST/IGST —
   GSTIN, invoice number and line items.
+- The OCR engine, its WebAssembly core and the English language data are served
+  from the app's own origin rather than a public CDN, so scanning works offline
+  and no third party ever sees your receipt.
 
 **Approval workflow (mandatory)**
 - A separate *Pending Approval* section with per-item review, bulk approve, and
@@ -95,11 +98,38 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 103 unit tests
+npm test         # 104 unit tests
 ```
+
+`npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
+the Tesseract worker, WASM core and English language data (~10 MB) out of
+`node_modules` into `public/tesseract/`. They are deliberately not committed —
+if the receipt scanner ever reports that the engine could not load, run
+`npm run vendor:ocr` and rebuild.
 
 `dist/` is a static bundle — host it anywhere, or install it to the home screen
 from a mobile browser.
+
+### Deploying
+
+Config for both platforms is committed, so there is nothing to fill in by hand:
+
+- **Netlify** — *Add new site → Import an existing project*, pick this repo and
+  branch. `netlify.toml` supplies the build command, publish directory, Node
+  version, redirects and headers.
+- **Vercel** — *Add New → Project*, import this repo. `vercel.json` supplies the
+  same.
+
+Both ship a strict `Content-Security-Policy`. The app makes no outbound requests
+at all — no API, no CDN, no analytics — so the policy is locked to `'self'`,
+with `'wasm-unsafe-eval'` and `blob:` only because the OCR engine runs as
+WebAssembly inside a worker. It is verified in the browser against those exact
+headers before each release, not just written down.
+
+A public deployment exposes the *app*, not your data: every transaction stays in
+your own browser's IndexedDB and is never sent anywhere. If you would still
+rather it not be publicly reachable, both platforms offer password protection on
+a deploy, or you can simply run it locally.
 
 On first run the dashboard offers **Load sample data**: nine months of realistic
 history plus five unreviewed messages, so every screen has something to show.
@@ -168,10 +198,13 @@ erases everything.
  src/engine/parser/parser.test.ts   35  message parsing, amounts, dates, categories
  src/engine/engine.test.ts          36  analytics, budgets, forecasts, insights, health, search
  src/store/reducer.test.ts          15  the mandatory approval workflow
- src/engine/ocr/receipt.test.ts      9  receipt field extraction
+ src/engine/ocr/receipt.test.ts     10  receipt field extraction
  src/export/exporters.test.ts        8  report building and CSV escaping
 ```
 
-Plus an end-to-end browser pass covering the empty state, AI capture, the
-approve/reject rules, natural-language search, every screen, all three export
-formats, theme switching, reload persistence and mobile layout.
+Plus two end-to-end browser passes, both run against the production build served
+with the deployed security headers: one covering the empty state, AI capture,
+the approve/reject rules, natural-language search, every screen, all three
+export formats, theme switching, reload persistence and mobile layout; and one
+that renders a receipt image, runs it through real OCR, and checks the scanner
+reads the grand total, date, GST and merchant with no network access.

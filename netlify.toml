@@ -1,0 +1,48 @@
+# Netlify deployment for FinSight.
+#
+# One-time setup: in Netlify, "Add new site" -> "Import an existing project",
+# pick this repository and the branch you want to publish. Netlify reads the
+# build settings below, so there is nothing to fill in by hand.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The app uses hash routing, so the server only ever needs to serve index.html.
+# This keeps a stray deep link from returning a 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # The app talks to nothing: no API, no CDN, no analytics. Everything it
+    # loads — including the OCR engine and its language data — comes from this
+    # origin, so the policy can be closed down to 'self'.
+    #
+    # 'wasm-unsafe-eval' is required to instantiate the OCR WebAssembly module;
+    # blob: covers the web worker OCR runs in. Styles need 'unsafe-inline'
+    # because the charting library sets style attributes on its SVG nodes.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(), microphone=(), payment=(), interest-cohort=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+
+# Fingerprinted bundles never change under the same name.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The OCR runtime is versioned with the app, so it can be cached hard too.
+[[headers]]
+  for = "/tesseract/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
