@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Colour roles. Series slots come from a validated categorical palette
+ * (adjacent-pair CVD ΔE ≥ 8 in both modes); dark steps are chosen for the dark
+ * surface rather than flipped from light.
+ */
+:root {
+  color-scheme: light;
+  --plane: 249 249 247;
+  --surface: 252 252 251;
+  --raised: 255 255 255;
+  --ink: 11 11 11;
+  --ink-muted: 82 81 78;
+  --ink-subtle: 137 135 129;
+  --line: 225 224 217;
+  --grid: 225 224 217;
+  --accent: 42 120 214;
+  --accent-soft: 205 226 251;
+
+  --good: 12 163 12;
+  --warning: 250 178 25;
+  --serious: 236 131 90;
+  --critical: 208 59 59;
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --series-other: #898781;
+
+  --seq-100: #cde2fb;
+  --seq-250: #86b6ef;
+  --seq-400: #3987e5;
+  --seq-550: #1c5cab;
+  --seq-700: #0d366b;
+}
+
+.dark {
+  color-scheme: dark;
+  --plane: 13 13 13;
+  --surface: 26 26 25;
+  --raised: 34 34 32;
+  --ink: 255 255 255;
+  --ink-muted: 195 194 183;
+  --ink-subtle: 137 135 129;
+  --line: 44 44 42;
+  --grid: 44 44 42;
+  --accent: 57 135 229;
+  --accent-soft: 24 79 149;
+
+  --good: 12 163 12;
+  --warning: 250 178 25;
+  --serious: 236 131 90;
+  --critical: 208 59 59;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-other: #898781;
+
+  --seq-100: #0d366b;
+  --seq-250: #184f95;
+  --seq-400: #256abf;
+  --seq-550: #3987e5;
+  --seq-700: #86b6ef;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-plane text-ink font-sans antialiased;
+    margin: 0;
+    overscroll-behavior-y: none;
+  }
+
+  /* Tabular figures wherever numbers must line up in columns. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-pill;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-card shadow-card;
+  }
+
+  .card-pad {
+    @apply p-4 sm:p-5;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-raised px-3 py-2.5 text-sm text-ink
+           placeholder:text-subtle transition-colors
+           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
+  }
+
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wide text-muted mb-1.5;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:brightness-110;
+  }
+
+  .btn-ghost {
+    @apply btn border border-line bg-raised text-ink hover:bg-plane;
+  }
+
+  .btn-quiet {
+    @apply btn text-muted hover:text-ink hover:bg-plane;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-pill border border-line bg-raised
+           px-2.5 py-1 text-xs font-medium text-muted;
+  }
+
+  .skeleton {
+    @apply rounded-lg bg-line/60;
+    background-image: linear-gradient(90deg, transparent, rgb(var(--ink) / 0.05), transparent);
+    background-size: 400px 100%;
+    background-repeat: no-repeat;
+    @apply animate-shimmer;
+  }
+
+  /* Charts scroll inside their own box; the page never scrolls sideways. */
+  .scroll-x {
+    @apply overflow-x-auto;
+    scrollbar-width: thin;
+  }
+}
+
+/* Recharts overrides: recessive chrome, ink-coloured text. */
+.recharts-cartesian-axis-tick-value {
+  fill: rgb(var(--ink-subtle));
+  font-size: 11px;
+}
+.recharts-cartesian-grid line {
+  stroke: rgb(var(--grid));
+}
+.recharts-default-tooltip {
+  display: none !important;
+}
+.recharts-surface {
+  overflow: visible;
+}
