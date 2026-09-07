@@ -6,7 +6,7 @@ import {
   buildReport, downloadCSV, downloadExcel, downloadPDF, transactionsToCSV, type ReportKind,
 } from '@/export/exporters';
 import { expensesOf, monthRange, totalOf } from '@/engine/analytics';
-import { addMonthsToKey, daysInMonth, downloadBlob, formatINR, monthKey, monthLabel, todayISO } from '@/lib/utils';
+import { addMonthsToKey, daysInMonth, downloadBlob, formatINR, IS_PREVIEW_BUILD, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 const REPORTS: Array<{ kind: ReportKind; title: string; detail: string }> = [
   { kind: 'monthly', title: 'Monthly Expense Report', detail: 'Month summary, category split and every transaction.' },
@@ -63,7 +63,7 @@ export function Reports() {
     try {
       const doc = buildReport(kind, ctx);
       const stem = `${kind}-report-${range.from}-to-${range.to}`;
-      if (format === 'csv') downloadCSV(doc, `${stem}.csv`);
+      if (format === 'csv') await downloadCSV(doc, `${stem}.csv`);
       else if (format === 'excel') await downloadExcel(doc, `${stem}.xlsx`);
       else await downloadPDF(doc, `${stem}.pdf`);
       toast(`${doc.title} exported as ${format.toUpperCase()}`);
@@ -74,12 +74,16 @@ export function Reports() {
     }
   };
 
-  const exportLedger = () => {
-    downloadBlob(
-      new Blob(['﻿', transactionsToCSV(state.transactions, state.accounts)], { type: 'text/csv;charset=utf-8' }),
-      `finsight-transactions-${today}.csv`,
-    );
-    toast('Full ledger exported');
+  const exportLedger = async () => {
+    try {
+      await downloadBlob(
+        new Blob(['\ufeff', transactionsToCSV(state.transactions, state.accounts)], { type: 'text/csv;charset=utf-8' }),
+        `finsight-transactions-${today}.csv`,
+      );
+      toast('Full ledger exported');
+    } catch (err) {
+      toast(`Export failed: ${err instanceof Error ? err.message : 'unknown error'}`, 'error');
+    }
   };
 
   return (
@@ -113,6 +117,16 @@ export function Reports() {
         </div>
       </Card>
 
+      {IS_PREVIEW_BUILD && (
+        <Card dense>
+          <p className="text-xs leading-relaxed text-muted">
+            <strong className="text-ink">Exports work here.</strong> This preview cannot save files by itself, so
+            each download is handed to the page host — you will see a confirmation naming the file before anything
+            is saved.
+          </p>
+        </Card>
+      )}
+
       <Card title="Downloadable reports" subtitle="Excel, PDF or CSV — built from approved transactions only">
         <ul className="space-y-2.5">
           {REPORTS.map((r) => (
@@ -145,7 +159,7 @@ export function Reports() {
 
       <Card title="Raw data export" subtitle="Every transaction as a single flat CSV">
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={exportLedger} disabled={!state.transactions.length}>
+          <Button variant="primary" onClick={() => void exportLedger()} disabled={!state.transactions.length}>
             <IconDownload width={16} height={16} /> Export full ledger
           </Button>
           <span className="text-xs text-muted">

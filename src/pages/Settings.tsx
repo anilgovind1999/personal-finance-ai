@@ -18,12 +18,16 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const customCategories = state.categories.filter((c) => c.custom);
   const secondaryRoutes = NAV.filter((n) => !n.primary && n.route !== 'settings');
 
-  const exportBackup = () => {
-    downloadBlob(
-      new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
-      `finsight-backup-${todayISO()}.json`,
-    );
-    toast('Backup downloaded');
+  const exportBackup = async () => {
+    try {
+      await downloadBlob(
+        new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
+        `finsight-backup-${todayISO()}.json`,
+      );
+      toast('Backup downloaded');
+    } catch (err) {
+      toast(`Backup failed: ${err instanceof Error ? err.message : 'unknown error'}`, 'error');
+    }
   };
 
   const importBackup = async (file: File) => {
@@ -159,7 +163,7 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button onClick={exportBackup}><IconDownload width={16} height={16} /> Export backup (JSON)</Button>
+          <Button onClick={() => void exportBackup()}><IconDownload width={16} height={16} /> Export backup (JSON)</Button>
           <label className="btn-ghost cursor-pointer">
             Restore from backup
             <input

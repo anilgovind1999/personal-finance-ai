@@ -310,9 +310,9 @@ export function reportToCSV(doc: ReportDoc): string {
   return lines.join('\n');
 }
 
-export function downloadCSV(doc: ReportDoc, filename: string): void {
+export async function downloadCSV(doc: ReportDoc, filename: string): Promise<void> {
   // The BOM keeps Excel happy with the rupee sign.
-  downloadBlob(new Blob(['﻿', reportToCSV(doc)], { type: 'text/csv;charset=utf-8' }), filename);
+  await downloadBlob(new Blob(['﻿', reportToCSV(doc)], { type: 'text/csv;charset=utf-8' }), filename);
 }
 
 /** Raw ledger export — one row per transaction, for spreadsheets and backups. */
@@ -370,7 +370,7 @@ export async function downloadExcel(doc: ReportDoc, filename: string): Promise<v
   }
 
   const buffer = await wb.xlsx.writeBuffer();
-  downloadBlob(
+  await downloadBlob(
     new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
     filename,
   );
@@ -430,5 +430,5 @@ export async function downloadPDF(doc: ReportDoc, filename: string): Promise<voi
     }
   }
 
-  downloadBlob(pdf.output('blob'), filename);
+  await downloadBlob(pdf.output('blob'), filename);
 }

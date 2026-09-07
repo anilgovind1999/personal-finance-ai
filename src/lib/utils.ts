@@ -189,7 +189,40 @@ export function titleCase(s: string): string {
     .join(' ');
 }
 
-export function downloadBlob(blob: Blob, filename: string): void {
+/** The slice of the Artifact runtime this app uses, when hosted as one. */
+interface ClaudeRuntime {
+  use(name: 'downloads'): Promise<{ save(r: { filename: string; data: Blob }): Promise<unknown> } | null>;
+}
+
+function claudeRuntime(): ClaudeRuntime | null {
+  const c = (window as unknown as { claude?: ClaudeRuntime }).claude;
+  return c && typeof c.use === 'function' ? c : null;
+}
+
+/**
+ * Hands a generated file to the user.
+ *
+ * Normally that is an anchor click. When the app runs inside the Artifact
+ * viewer, pages cannot download directly — the host mediates it, showing the
+ * viewer a confirmation — so the save goes through that capability instead.
+ * A viewer who declines is not an error; anything else is worth surfacing.
+ */
+export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
+  const runtime = claudeRuntime();
+  if (runtime) {
+    const downloads = await runtime.use('downloads').catch(() => null);
+    if (downloads) {
+      try {
+        await downloads.save({ filename, data: blob });
+      } catch (err) {
+        const code = (err as { code?: string } | null)?.code;
+        if (code === 'declined' || code === 'rate_limited') return;
+        throw new Error(`the viewer could not save the file (${code ?? 'unknown error'})`);
+      }
+      return;
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -199,3 +232,10 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
+/**
+ * True in the hosted single-file preview build, where the sandbox blocks
+ * page-initiated downloads and cannot serve the OCR runtime. Used to switch
+ * those features off in the UI instead of letting them fail silently.
+ */
+export const IS_PREVIEW_BUILD = import.meta.env.VITE_PREVIEW === '1';

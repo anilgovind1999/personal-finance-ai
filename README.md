@@ -110,6 +110,14 @@ if the receipt scanner ever reports that the engine could not load, run
 `dist/` is a static bundle — host it anywhere, or install it to the home screen
 from a mobile browser.
 
+### A note on downloads
+
+Report exports normally save through an anchor click. When the app is hosted
+somewhere that does not let a page save files directly — the single-file preview
+build is the case that matters — `downloadBlob` routes the save through the
+host, which shows the viewer a confirmation naming the file. A viewer who
+declines is not treated as an error.
+
 ### Deploying
 
 Config for both platforms is committed, so there is nothing to fill in by hand:

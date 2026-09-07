@@ -6,7 +6,7 @@ import { Badge, Button, Card, Segmented, cx } from '@/components/ui/Primitives';
 import { IconCamera, IconMessage, IconSparkles } from '@/components/Icons';
 import { confidenceBand, parseMessage, splitMessages } from '@/engine/parser';
 import { extractReceiptFields, extractionFromReceipt, receiptSummary } from '@/engine/ocr/receipt';
-import { formatINR } from '@/lib/utils';
+import { formatINR, IS_PREVIEW_BUILD } from '@/lib/utils';
 
 const SOURCES: Array<{ value: CaptureSource; label: string }> = [
   { value: 'whatsapp', label: 'WhatsApp' },
@@ -57,11 +57,13 @@ export function Capture({ onNavigate }: { onNavigate: (r: Route) => void }) {
         title="AI expense capture"
         subtitle="Read a message or a receipt, then send the result for your approval"
         action={
-          <Segmented
-            value={tab}
-            onChange={setTab}
-            options={[{ value: 'message', label: 'Message' }, { value: 'receipt', label: 'Receipt' }]}
-          />
+          IS_PREVIEW_BUILD ? undefined : (
+            <Segmented
+              value={tab}
+              onChange={setTab}
+              options={[{ value: 'message', label: 'Message' }, { value: 'receipt', label: 'Receipt' }]}
+            />
+          )
         }
       >
         <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-accent/30 bg-accent/8 px-3 py-2.5">
@@ -71,6 +73,14 @@ export function Capture({ onNavigate }: { onNavigate: (r: Route) => void }) {
             No AI-detected transaction reaches your ledger, dashboard or reports until you approve it.
           </p>
         </div>
+
+        {IS_PREVIEW_BUILD && (
+          <p className="mb-4 rounded-xl border border-line bg-plane px-3 py-2.5 text-xs leading-relaxed text-muted">
+            <strong className="text-ink">Receipt scanning is off in this preview.</strong> The OCR engine is a
+            10&nbsp;MB WebAssembly runtime this page cannot serve. It works in the full app — message capture
+            below is the real engine, unchanged.
+          </p>
+        )}
 
         {tab === 'message' ? (
           <MessageCapture

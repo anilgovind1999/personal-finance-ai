@@ -142,10 +142,12 @@ export function Shell({
             type="button"
             onClick={() => dismissToast(t.id)}
             className={cx(
-              'pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left text-xs font-medium shadow-pop animate-fade-up',
-              t.tone === 'error' ? 'border-critical/40 bg-critical/12 text-critical'
-                : t.tone === 'info' ? 'border-line bg-raised text-ink'
-                : 'border-good/40 bg-good/12 text-good',
+              // Opaque, not tinted-translucent: a toast sits over live content
+              // and must never let the text behind it show through.
+              'pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-xl border bg-raised px-3.5 py-2.5 text-left text-xs font-medium shadow-pop animate-fade-up',
+              t.tone === 'error' ? 'border-critical/50 text-critical'
+                : t.tone === 'info' ? 'border-line text-ink'
+                : 'border-good/50 text-good',
             )}
           >
             {t.message}
