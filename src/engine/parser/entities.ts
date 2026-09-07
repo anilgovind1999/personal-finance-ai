@@ -48,13 +48,19 @@ export function findBank(text: string): Hit<string> | null {
   return best;
 }
 
-/** Card / account last-4, from patterns like 'XX4521', 'ending 1234', 'a/c ...7788'. */
+/**
+ * Card / account last-4. Indian bank SMS mask these many ways: 'XX4521',
+ * 'x3311', 'A/C *8866', 'ending 1234', or just 'Card 6644'.
+ */
 export function findLast4(text: string): Hit<string> | null {
   const patterns: Array<[RegExp, number]> = [
-    [/\b(?:card|a\/c|ac|acct|account)\s*(?:no\.?|number)?\s*(?:x|\*|\.){2,}\s*(\d{4})\b/i, 0.95],
+    [/\b(?:card|a\/c|ac|acct|account)\s*(?:no\.?|number)?\s*(?:x|\*|\.){1,}\s*(\d{4})\b/i, 0.95],
     [/\b(?:x|\*){2,}\s*(\d{4})\b/i, 0.9],
+    // A single 'x' or '*' immediately against four digits is a mask, not a word.
+    [/(?:^|[\s(])[x*](\d{4})\b/i, 0.88],
     [/\bending(?:\s+(?:with|in))?\s*(\d{4})\b/i, 0.92],
     [/\blast\s*4\s*(?:digits?)?\s*[:\-]?\s*(\d{4})\b/i, 0.9],
+    [/\bcc\s*(\d{4})\b/i, 0.85],
     [/\b(?:card|a\/c|account)\s*(?:no\.?|number)?\s*[:\-]?\s*(\d{4})\b/i, 0.7],
   ];
   for (const [re, conf] of patterns) {
@@ -105,22 +111,59 @@ export function findLocation(text: string): Hit<string> | null {
  * Best-effort merchant name when the lexicon has no match: pulls the phrase after
  * 'at' / 'to' / 'from', or a UPI VPA handle.
  */
+/** Payment-service tokens that ride along in a VPA but are not the merchant. */
+const PSP_TOKENS = new Set([
+  'payu', 'gpay', 'paytm', 'razorpay', 'billdesk', 'ccavenue', 'phonepe', 'bharatpe',
+  'ybl', 'okbizaxi', 'upi', 'pay', 'payments', 'payment', 'merchant', 'store',
+]);
+
+/** True when a candidate is really a reference number rather than a name. */
+function isNoise(candidate: string): boolean {
+  const letters = candidate.replace(/[^a-z]/gi, '').length;
+  const digits = candidate.replace(/\D/g, '').length;
+  return letters < 3 || digits > letters;
+}
+
+/**
+ * Best-effort merchant when the lexicon has no match: a UPI VPA's own name, or
+ * the phrase after 'at' / 'to' / 'from'.
+ *
+ * Bank SMS are written in Title Case or ALL CAPS ("At AA FOODS AND BEVERAGES"),
+ * so the prepositions are matched in either case while the merchant tokens
+ * themselves must still start capitalised — that is what separates a name from
+ * the surrounding prose.
+ */
 export function guessMerchantFromText(text: string): Hit<string> | null {
-  const vpa = text.match(/\b([a-zA-Z0-9._-]{3,})@(?:ok[a-z]+|ybl|paytm|apl|ibl|axl|upi|sbi|hdfcbank|icici|axisbank)\b/);
+  const vpa = text.match(/\b([a-zA-Z][a-zA-Z0-9._-]{2,})@([a-zA-Z][a-zA-Z0-9]{1,})\b/);
   if (vpa) {
-    const handle = vpa[1].replace(/[._-]+/g, ' ').trim();
-    if (!/^\d+$/.test(handle)) {
-      return { value: titleCase(handle), confidence: 0.62, evidence: vpa[0] };
+    const cleaned = vpa[1]
+      .split(/[._-]+/)
+      .filter((part) => part && !PSP_TOKENS.has(part.toLowerCase()))
+      .join(' ')
+      .trim();
+    // 'q400300200@ybl' and 'gpay-99887766554@okbizaxi' name nobody; a merchant
+    // handle like 'dailyobjects.payu@axisbank' does.
+    if (cleaned && !isNoise(cleaned)) {
+      return { value: titleCase(cleaned), confidence: 0.68, evidence: vpa[0] };
     }
   }
 
-  const prep = text.match(
-    /\b(?:at|to|from|towards|paid to|sent to)\s+((?:[A-Z][\w&'.-]*|[A-Z]{2,})(?:\s+(?:[A-Z][\w&'.-]*|[A-Z]{2,})){0,3})/,
-  );
-  if (prep) {
-    const raw = prep[1].trim().replace(/\s+(?:on|for|via|using|through|with)$/i, '');
-    if (raw.length >= 3 && !/^(?:the|my|his|her|your|rs|inr)$/i.test(raw)) {
-      return { value: raw, confidence: 0.55, evidence: prep[0] };
+  // 'At'/'To' name the payee; 'From' names the account the money left, so it is
+  // only a last resort — "Sent Rs.74 From HDFC Bank A/C *7755 To ARJUN NAIR"
+  // must yield the person, not the bank.
+  const NAME = String.raw`((?:[A-Z][\w&'.*-]*)(?:\s+(?:[A-Z][\w&'.*-]*|AND|and|&)){0,3})`;
+  for (const [prepositions, confidence] of [
+    [String.raw`[Aa]t|[Tt]o|[Tt]owards`, 0.6],
+    [String.raw`[Ff]rom`, 0.45],
+  ] as Array<[string, number]>) {
+    const re = new RegExp(String.raw`(?:^|\s)(?:${prepositions})\s+` + NAME, 'g');
+    for (const m of text.matchAll(re)) {
+      const raw = normaliseDescriptor(m[1]);
+      if (raw.length < 3) continue;
+      if (/^(?:The|My|His|Her|Your|Rs|Inr|Upi|Cc|Block|Reissue|Call|Not|You)$/i.test(raw)) continue;
+      // A bank is the rail the payment ran on, never the payee.
+      if (/\bbank\b/i.test(raw) || findBank(raw)) continue;
+      return { value: raw, confidence, evidence: m[0].trim() };
     }
   }
 
@@ -129,4 +172,15 @@ export function guessMerchantFromText(text: string): Hit<string> | null {
     return { value: titleCase(lowerPrep[0].replace(/^(?:at|from)\s+/i, '')), confidence: 0.5, evidence: lowerPrep[0] };
   }
   return null;
+}
+
+/**
+ * Card networks prefix the real name with an acquirer code — 'Eas*THEDERMACO',
+ * 'SQ *COFFEE'. Drop a short prefix before the star and keep the name.
+ */
+function normaliseDescriptor(raw: string): string {
+  let out = raw.trim().replace(/\s+(?:On|on|For|for|Via|via|Using|using|Through|through|With|with)$/, '');
+  const star = out.match(/^([A-Za-z]{1,4})\s*\*\s*(.+)$/);
+  if (star) out = star[2];
+  return out.replace(/\s{2,}/g, ' ').trim();
 }

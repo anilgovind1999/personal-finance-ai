@@ -113,15 +113,20 @@ export function parseMessage(text: string, options: ParseOptions = {}): Extracti
   if (last4Hit) reasons.push(`Card/account ending ${last4Hit.value}.`);
   const locationHit = findLocation(clean);
 
-  // A card ending without an explicit mode still tells us it was a card.
+  // A card ending without an explicit mode still tells us it was a card. Which
+  // kind matters for the outstanding balance, so only claim debit when nothing
+  // in the message points at credit.
   if (!modeHit && last4Hit) {
-    paymentMode = 'Debit Card';
-    modeConf = 0.45;
+    const credit = /\b(?:cc|credit)\b/i.test(clean);
+    paymentMode = credit ? 'Credit Card' : 'Debit Card';
+    modeConf = credit ? 0.6 : 0.45;
   }
 
   // Falling back to the bank would be misleading — HDFC is who moved the money,
-  // not who was paid. The category reads as the placeholder it is.
-  const merchantFallback = merchantName || titleCase(category);
+  // not who was paid. A confident category reads as the placeholder it is, but
+  // the catch-all categories name nothing, and "Other" is not a merchant.
+  const genericCategory = category === 'Other' || category === 'Other Income';
+  const merchantFallback = merchantName || (genericCategory ? 'Unknown merchant' : titleCase(category));
 
   const confidence = aggregateConfidence({
     amount: amountHit?.confidence ?? 0,

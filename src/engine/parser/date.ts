@@ -95,6 +95,17 @@ export function extractDate(text: string, now = new Date()): DateHit {
     if (iso) return { value: iso, confidence: 0.9, evidence: dmyMatch[0] };
   }
 
+  // Bare day-month with no year: 'On 07-09', 'On 04/09'. Card alerts use this
+  // constantly. Resolved against the current year, rolling back if that would
+  // put the transaction in the future.
+  const dmOnly = lower.match(/\bon\s+(\d{1,2})[/\-.](\d{1,2})(?![/\-.\d])/);
+  if (dmOnly) {
+    const d = Number(dmOnly[1]);
+    const m = Number(dmOnly[2]);
+    const iso = safeISO(inferYear(now, m, d), m, d);
+    if (iso) return { value: iso, confidence: 0.8, evidence: dmOnly[0] };
+  }
+
   // 14 Mar 2026 / 14th March / Mar 14
   const dMonY = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?[\s-]*(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\.?(?:[\s,-]*(\d{2,4}))?\b/);
   if (dMonY) {

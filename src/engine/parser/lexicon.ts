@@ -114,6 +114,7 @@ export const MERCHANTS: MerchantEntry[] = [
   { name: 'Meesho', aliases: ['meesho'], category: 'Shopping', subcategory: 'Online Shopping' },
   { name: 'Nykaa', aliases: ['nykaa'], category: 'Personal Care', subcategory: 'Cosmetics' },
   { name: 'Croma', aliases: ['croma'], category: 'Shopping', subcategory: 'Electronics' },
+  { name: 'DailyObjects', aliases: ['dailyobjects', 'daily objects'], category: 'Shopping', subcategory: 'Accessories' },
   { name: 'Reliance Digital', aliases: ['reliance digital'], category: 'Shopping', subcategory: 'Electronics' },
   { name: 'IKEA', aliases: ['ikea'], category: 'Shopping', subcategory: 'Home & Kitchen' },
   { name: 'Decathlon', aliases: ['decathlon'], category: 'Shopping', subcategory: 'Accessories' },
@@ -183,6 +184,11 @@ export const MERCHANTS: MerchantEntry[] = [
 
   // Home services
   { name: 'Urban Company', aliases: ['urban company', 'urbanclap'], category: 'Home Maintenance', subcategory: 'Repairs' },
+
+  // CRED settles credit card bills; DreamPlug Technologies is the entity name
+  // that appears on the statement. Overwhelmingly a bill payment, so it lands
+  // as a transfer — the approval screen is there to correct the exceptions.
+  { name: 'CRED', aliases: ['cred', 'dreamplug', 'dreamplug technologi'], category: 'Transfers', subcategory: 'Credit Card Bill Payment' },
 ];
 
 /**
@@ -190,7 +196,7 @@ export const MERCHANTS: MerchantEntry[] = [
  * Scores are summed, so several weak hits can outrank one strong hit.
  */
 export const CATEGORY_KEYWORDS: Record<string, Array<[string, number]>> = {
-  'Food & Dining': [['lunch', 3], ['dinner', 3], ['breakfast', 3], ['brunch', 3], ['restaurant', 3], ['hotel food', 2], ['food', 2.5], ['meal', 2.5], ['snack', 2], ['tea', 1.5], ['coffee', 2], ['pizza', 2.5], ['burger', 2.5], ['biryani', 3], ['dosa', 2.5], ['thali', 2.5], ['cafe', 2], ['canteen', 2.5], ['tiffin', 2.5], ['sweets', 2], ['bakery', 2.5], ['juice', 1.5], ['ice cream', 2.5], ['dine', 2], ['takeaway', 2], ['eatery', 2.5], ['mess bill', 2.5]],
+  'Food & Dining': [['lunch', 3], ['dinner', 3], ['breakfast', 3], ['brunch', 3], ['restaurant', 3], ['hotel food', 2], ['food', 2.5], ['meal', 2.5], ['snack', 2], ['tea', 1.5], ['coffee', 2], ['pizza', 2.5], ['burger', 2.5], ['biryani', 3], ['dosa', 2.5], ['thali', 2.5], ['cafe', 2], ['canteen', 2.5], ['foods', 2.5], ['beverage', 2], ['beverages', 2], ['bakers', 2.5], ['hotel', 1.2], ['tiffin', 2.5], ['sweets', 2], ['bakery', 2.5], ['juice', 1.5], ['ice cream', 2.5], ['dine', 2], ['takeaway', 2], ['eatery', 2.5], ['mess bill', 2.5]],
   Grocery: [['grocery', 4], ['groceries', 4], ['supermarket', 3], ['hypermarket', 3], ['vegetables', 3], ['veggies', 3], ['fruits', 2.5], ['provisions', 3], ['kirana', 3.5], ['milk', 2], ['rice', 1.5], ['atta', 2.5], ['household items', 2.5], ['ration', 3], ['dal', 1.5], ['toor dal', 2], ['basmati', 2], ['sugar', 1.5], ['salt', 1.2], ['flour', 1.5], ['masala', 1.5], ['detergent', 2], ['soap', 1.5], ['shampoo', 1.5], ['biscuit', 1.5], ['sunflower oil', 2], ['cooking oil', 2.5], ['bread', 1.5], ['eggs', 1.5], ['curd', 1.5], ['paneer', 1.8], ['onion', 1.5], ['potato', 1.5], ['tomato', 1.5]],
   Fuel: [['petrol', 4], ['diesel', 4], ['fuel', 4], ['refuel', 4], ['gas station', 3], ['filling station', 3], ['cng', 3.5], ['ev charging', 3.5], ['pump', 1.5], ['tank full', 3]],
   Family: [['mother', 2.5], ['father', 2.5], ['mom', 2.5], ['dad', 2.5], ['parents', 3], ['wife', 2.5], ['husband', 2.5], ['son', 2], ['daughter', 2], ['kids', 2], ['family', 3], ['maid', 2.5], ['househelp', 2.5], ['pocket money', 2.5]],
@@ -201,7 +207,7 @@ export const CATEGORY_KEYWORDS: Record<string, Array<[string, number]>> = {
   Education: [['tuition', 4], ['school fee', 4], ['college fee', 4], ['course', 2.5], ['books', 2], ['exam fee', 3.5], ['coaching', 3], ['semester', 3], ['admission fee', 3.5], ['stationery', 2], ['certification', 2.5]],
   Healthcare: [['doctor', 3.5], ['hospital', 3.5], ['medicine', 3.5], ['medicines', 3.5], ['pharmacy', 3.5], ['medical', 3], ['clinic', 3], ['dental', 3.5], ['dentist', 3.5], ['lab test', 3.5], ['scan', 2], ['blood test', 3.5], ['consultation', 2.5], ['surgery', 3.5], ['physiotherapy', 3.5], ['vaccine', 3]],
   Travel: [['flight', 3.5], ['train', 3], ['bus ticket', 3.5], ['cab', 3.5], ['taxi', 3.5], ['auto', 2], ['travel', 3], ['trip', 2.5], ['hotel stay', 3.5], ['booking', 1.5], ['toll', 3], ['parking', 3], ['airport', 2.5], ['vacation', 3], ['holiday', 2], ['ride', 2], ['metro', 2.5], ['railway', 3]],
-  Shopping: [['shopping', 3.5], ['bought', 1.5], ['purchase', 1.5], ['order', 1], ['headphone', 2.5], ['mobile phone', 2.5], ['laptop', 2.5], ['electronics', 3], ['gadget', 2.5], ['furniture', 3], ['kitchenware', 2.5], ['appliance', 2.5]],
+  Shopping: [['shopping', 3.5], ['bought', 1.5], ['purchase', 1.5], ['order', 1], ['headphone', 2.5], ['mobile phone', 2.5], ['laptop', 2.5], ['electronics', 3], ['gadget', 2.5], ['furniture', 3], ['kitchenware', 2.5], ['appliance', 2.5], ['mall', 2], ['world mall', 2.5], ['lifestyle', 1.5]],
   Utilities: [['electricity', 4], ['power bill', 4], ['water bill', 4], ['gas bill', 3.5], ['gas cylinder', 3.5], ['lpg', 3.5], ['maintenance charge', 3], ['society bill', 3], ['utility', 3], ['sewage', 2.5]],
   'Mobile & Internet': [['recharge', 3.5], ['mobile bill', 4], ['postpaid', 3.5], ['prepaid', 3], ['broadband', 4], ['wifi', 3], ['internet bill', 4], ['data pack', 3.5], ['dth', 3.5], ['landline', 3]],
   'Rent/Housing': [['rent', 4], ['house rent', 4.5], ['flat rent', 4.5], ['landlord', 4], ['brokerage', 3], ['security deposit', 3], ['society fees', 3], ['pg rent', 4]],
@@ -235,7 +241,7 @@ export const INCOME_KEYWORDS: Record<string, Array<[string, number]>> = {
 
 /** Phrases that indicate money moving out. */
 export const DEBIT_MARKERS = [
-  'debited', 'debit', 'spent', 'paid', 'payment of', 'purchase of', 'withdrawn', 'deducted',
+  'debited', 'debit', 'spent', 'paid', 'payment of', 'purchase of', 'withdrawn', 'deducted', 'txn', 'sent',
   'charged', 'bought', 'sent', 'transferred to', 'paying', 'bill paid', 'txn of', 'used for',
 ];
 
@@ -247,7 +253,7 @@ export const CREDIT_MARKERS = [
 
 export const PAYMENT_MODE_MARKERS: Array<[PaymentMode, string[]]> = [
   ['UPI', ['upi', 'vpa', '@okhdfcbank', '@okaxis', '@oksbi', '@ybl', '@paytm', '@ibl', '@axl', 'gpay', 'google pay', 'phonepe', 'phone pe', 'bhim', 'upi ref', 'upi/', 'scan and pay', 'qr code']],
-  ['Credit Card', ['credit card', 'cc ending', 'creditcard', 'cred card', 'card xx', 'credit crd']],
+  ['Credit Card', ['credit card', 'cc ending', 'creditcard', 'cred card', 'card xx', 'credit crd', 'block cc', 'cc no']],
   ['Debit Card', ['debit card', 'debitcard', 'atm card', 'debit crd']],
   ['Net Banking', ['net banking', 'netbanking', 'imps', 'neft', 'rtgs', 'internet banking', 'fund transfer']],
   ['Wallet', ['wallet', 'paytm wallet', 'amazon pay balance', 'mobikwik', 'freecharge']],
