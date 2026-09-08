@@ -6,7 +6,7 @@ import {
   buildReport, downloadCSV, downloadExcel, downloadPDF, transactionsToCSV, type ReportKind,
 } from '@/export/exporters';
 import { expensesOf, monthRange, totalOf } from '@/engine/analytics';
-import { addMonthsToKey, daysInMonth, downloadBlob, formatINR, IS_PREVIEW_BUILD, monthKey, monthLabel, todayISO } from '@/lib/utils';
+import { addMonthsToKey, daysInMonth, downloadBlob, formatINR, inArtifactHost, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 const REPORTS: Array<{ kind: ReportKind; title: string; detail: string }> = [
   { kind: 'monthly', title: 'Monthly Expense Report', detail: 'Month summary, category split and every transaction.' },
@@ -117,7 +117,7 @@ export function Reports() {
         </div>
       </Card>
 
-      {IS_PREVIEW_BUILD && (
+      {inArtifactHost() && (
         <Card dense>
           <p className="text-xs leading-relaxed text-muted">
             <strong className="text-ink">Exports work here.</strong> This preview cannot save files by itself, so

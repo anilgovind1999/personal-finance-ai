@@ -15,7 +15,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b",
     "vendor:ocr": "node scripts/vendor-ocr.mjs",
-    "build:preview": "vite build --config vite.artifact.config.ts && node scripts/build-artifact.mjs"
+    "build:single": "vite build --config vite.artifact.config.ts && node scripts/build-artifact.mjs && node scripts/wrap-standalone.mjs"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "^1.0.0",

@@ -234,8 +234,14 @@ export async function downloadBlob(blob: Blob, filename: string): Promise<void> 
 }
 
 /**
- * True in the hosted single-file preview build, where the sandbox blocks
- * page-initiated downloads and cannot serve the OCR runtime. Used to switch
- * those features off in the UI instead of letting them fail silently.
+ * True in the single-file build — the whole app inlined into one .html that can
+ * be emailed or opened from disk. Receipt OCR needs a 10 MB WebAssembly runtime
+ * served as separate files, so it is switched off there rather than left to
+ * fail.
  */
-export const IS_PREVIEW_BUILD = import.meta.env.VITE_PREVIEW === '1';
+export const IS_SINGLE_FILE = import.meta.env.VITE_SINGLE_FILE === '1';
+
+/** True when running inside the Claude artifact viewer, which mediates saves. */
+export function inArtifactHost(): boolean {
+  return typeof window !== 'undefined' && typeof (window as { claude?: unknown }).claude !== 'undefined';
+}

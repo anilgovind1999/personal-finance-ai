@@ -15,7 +15,7 @@ const stub = path.resolve(root, 'scripts/preview-stubs/unavailable.ts');
 export default defineConfig({
   plugins: [react()],
   base: './',
-  define: { 'import.meta.env.VITE_PREVIEW': JSON.stringify('1') },
+  define: { 'import.meta.env.VITE_SINGLE_FILE': JSON.stringify('1') },
   resolve: {
     alias: {
       '@': path.resolve(root, 'src'),
