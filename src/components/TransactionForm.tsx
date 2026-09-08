@@ -1,15 +1,21 @@
 import { useMemo, useState } from 'react';
 import type { Attachment, PaymentMode, Transaction, TxnKind } from '@/types';
 import { PAYMENT_MODES } from '@/data/categories';
+import { CURRENCIES } from '@/data/currencies';
+import { convert, rateFor } from '@/engine/currency';
 import { useStore } from '@/store/AppStore';
 import { Button, Field, Segmented, Select, cx } from '@/components/ui/Primitives';
 import { IconCamera, IconPlus, IconTrash, IconX } from '@/components/Icons';
-import { todayISO, uid } from '@/lib/utils';
+import { formatMoney, round2, todayISO, uid } from '@/lib/utils';
 
 export interface TxnFormValue {
   kind: TxnKind;
   date: string;
   amount: string;
+  /** The currency the money was actually spent in. */
+  currency: string;
+  /** Home-currency units per one unit of `currency`; blank means look it up. */
+  rate: string;
   merchant: string;
   category: string;
   subcategory: string;
@@ -21,11 +27,13 @@ export interface TxnFormValue {
   attachmentIds: string[];
 }
 
-export function emptyForm(kind: TxnKind = 'expense'): TxnFormValue {
+export function emptyForm(kind: TxnKind = 'expense', homeCurrency = 'INR'): TxnFormValue {
   return {
     kind,
     date: todayISO(),
     amount: '',
+    currency: homeCurrency,
+    rate: '',
     merchant: '',
     category: kind === 'income' ? 'Salary' : 'Food & Dining',
     subcategory: '',
@@ -38,11 +46,14 @@ export function emptyForm(kind: TxnKind = 'expense'): TxnFormValue {
   };
 }
 
-export function formFromTransaction(t: Transaction): TxnFormValue {
+export function formFromTransaction(t: Transaction, homeCurrency = 'INR'): TxnFormValue {
   return {
     kind: t.kind,
     date: t.date,
-    amount: String(t.amount),
+    // Editing shows what was actually paid, in the currency it was paid in.
+    amount: String(t.original ? t.original.amount : t.amount),
+    currency: t.original?.currency ?? homeCurrency,
+    rate: t.original ? String(t.original.rate) : '',
     merchant: t.merchant,
     category: t.category,
     subcategory: t.subcategory ?? '',
@@ -55,23 +66,43 @@ export function formFromTransaction(t: Transaction): TxnFormValue {
   };
 }
 
-export function validate(v: TxnFormValue): Partial<Record<keyof TxnFormValue, string>> {
+export function validate(
+  v: TxnFormValue,
+  homeCurrency = 'INR',
+  knownRate: number | null = null,
+): Partial<Record<keyof TxnFormValue, string>> {
   const errors: Partial<Record<keyof TxnFormValue, string>> = {};
   const amount = Number(v.amount);
   if (!v.amount.trim()) errors.amount = 'Enter an amount';
   else if (!Number.isFinite(amount) || amount <= 0) errors.amount = 'Amount must be greater than zero';
   if (!v.date) errors.date = 'Pick a date';
   if (!v.category) errors.category = 'Choose a category';
+
+  if (v.currency !== homeCurrency) {
+    const typed = Number(v.rate);
+    const usable = v.rate.trim() ? Number.isFinite(typed) && typed > 0 : knownRate !== null;
+    if (!usable) {
+      errors.rate = `Enter how many ${homeCurrency} one ${v.currency} is worth`;
+    }
+  }
   return errors;
 }
 
-export function toTransaction(v: TxnFormValue, existing?: Transaction): Transaction {
+export function toTransaction(
+  v: TxnFormValue,
+  existing?: Transaction,
+  homeCurrency = 'INR',
+  rateTable?: Parameters<typeof convert>[3],
+): Transaction {
   const now = new Date().toISOString();
+  const typedRate = v.rate.trim() ? Number(v.rate) : undefined;
+  const converted = convert(Number(v.amount), v.currency, homeCurrency, rateTable, typedRate, now);
   return {
     id: existing?.id ?? uid('txn'),
     kind: v.kind,
     date: v.date,
-    amount: Math.round(Number(v.amount) * 100) / 100,
+    amount: converted.amount,
+    original: converted.original,
     merchant: v.merchant.trim() || 'Unspecified',
     category: v.category,
     subcategory: v.subcategory || undefined,
@@ -118,6 +149,15 @@ export function TransactionForm({
     [categories, value.category],
   );
   const accounts = state.accounts.filter((a) => !a.archived);
+
+  const homeCurrency = state.settings.currency;
+  const foreign = value.currency !== homeCurrency;
+  const lookedUpRate = foreign ? rateFor(value.currency, homeCurrency, state.settings.rateTable) : null;
+  const effectiveRate = value.rate.trim() ? Number(value.rate) : lookedUpRate;
+  const converted =
+    foreign && effectiveRate && Number.isFinite(effectiveRate) && Number(value.amount) > 0
+      ? round2(Number(value.amount) * effectiveRate)
+      : null;
 
   const addTag = () => {
     const tag = tagDraft.trim().toLowerCase();
@@ -175,18 +215,27 @@ export function TransactionForm({
       />
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Amount (₹)" error={errors.amount} className="col-span-2 sm:col-span-1">
-          <input
-            className="input text-lg font-semibold tnum"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={value.amount}
-            onChange={(e) => set('amount', e.target.value)}
-            autoFocus
-          />
+        <Field label="Amount" error={errors.amount} className="col-span-2 sm:col-span-1">
+          <div className="flex gap-2">
+            <input
+              className="input text-lg font-semibold tnum"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={value.amount}
+              onChange={(e) => set('amount', e.target.value)}
+              autoFocus
+            />
+            <Select
+              aria-label="Currency"
+              className="w-28 shrink-0"
+              value={value.currency}
+              onChange={(e) => onChange({ ...value, currency: e.target.value, rate: '' })}
+              options={CURRENCIES.map((c) => ({ value: c.code, label: c.code }))}
+            />
+          </div>
         </Field>
 
         <Field label="Date" error={errors.date} className="col-span-2 sm:col-span-1">
@@ -231,6 +280,42 @@ export function TransactionForm({
           </datalist>
         </Field>
       </div>
+
+      {foreign && (
+        <div className="rounded-xl border border-line bg-plane p-3">
+          <Field
+            label={`Rate — ${homeCurrency} per 1 ${value.currency}`}
+            error={errors.rate}
+            hint={
+              lookedUpRate !== null && !value.rate.trim()
+                ? `Using ${round2(lookedUpRate)} from the rates last fetched. Type your own to override — a bank's own rate includes its fees.`
+                : 'Type the rate your bank actually used, if you know it.'
+            }
+          >
+            <input
+              className="input tnum"
+              type="number"
+              inputMode="decimal"
+              step="0.0001"
+              min="0"
+              placeholder={lookedUpRate !== null ? String(round2(lookedUpRate)) : '0.00'}
+              value={value.rate}
+              onChange={(e) => set('rate', e.target.value)}
+            />
+          </Field>
+
+          <p className="mt-2 text-xs text-muted">
+            {converted !== null ? (
+              <>
+                Recorded as <strong className="tnum text-ink">{formatMoney(converted)}</strong> in your
+                ledger. The original {value.currency} amount and this rate are kept with the transaction.
+              </>
+            ) : (
+              <>A rate is needed before this can be recorded in {homeCurrency}.</>
+            )}
+          </p>
+        </div>
+      )}
 
       {addingCategory ? (
         <div className="flex gap-2">

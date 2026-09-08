@@ -10,7 +10,7 @@ import {
 import { fixedVsVariable, generateInsights, type InsightSeverity } from '@/engine/insights';
 import { incomeVolatility, summariseIncome } from '@/engine/income';
 import { forecastMonthEnd, forecastYearEnd, projectCashBalance, savingsPotential } from '@/engine/forecast';
-import { addMonthsToKey, formatINR, formatShortINR, monthKey, monthLabel, todayISO } from '@/lib/utils';
+import { addMonthsToKey, formatMoney, formatShortMoney, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 type Period = '1m' | '3m' | '6m' | '12m' | 'all';
 type Grain = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -95,10 +95,10 @@ export function Analytics() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Income" value={formatINR(view.summary.income, true)} />
-        <Stat label="Expenses" value={formatINR(view.summary.expense, true)} />
-        <Stat label="Invested" value={formatINR(view.summary.invested, true)} hint="Counted as savings" />
-        <Stat label="Avg / day" value={formatINR(view.summary.avgDaily, true)} />
+        <Stat label="Income" value={formatMoney(view.summary.income, true)} />
+        <Stat label="Expenses" value={formatMoney(view.summary.expense, true)} />
+        <Stat label="Invested" value={formatMoney(view.summary.invested, true)} hint="Counted as savings" />
+        <Stat label="Avg / day" value={formatMoney(view.summary.avgDaily, true)} />
       </div>
 
       <Card title={`${grain[0].toUpperCase()}${grain.slice(1)} trend`} subtitle="Income against expenses over the selected window">
@@ -108,7 +108,7 @@ export function Analytics() {
         />
       </Card>
 
-      <Card title="Daily rhythm this month" subtitle={`Average ${formatINR(avgDaily)} a day`}>
+      <Card title="Daily rhythm this month" subtitle={`Average ${formatMoney(avgDaily)} a day`}>
         <ColumnChart data={view.thisMonthDaily} average={avgDaily} slot={1} labelFor={(d) => `${d} ${monthLabel(month)}`} />
       </Card>
 
@@ -146,7 +146,7 @@ export function Analytics() {
                 </div>
               )}
               <p className="mt-3 text-xs text-muted">
-                Most used account: <strong className="text-ink">{view.accounts[0]?.name}</strong> · {formatINR(view.accounts[0]?.value ?? 0)}
+                Most used account: <strong className="text-ink">{view.accounts[0]?.name}</strong> · {formatMoney(view.accounts[0]?.value ?? 0)}
               </p>
             </>
           ) : (
@@ -169,18 +169,18 @@ export function Analytics() {
               </div>
               <Progress value={view.fixed.fixedShare} tone={view.fixed.fixedShare > 70 ? 'warning' : 'accent'} />
               <p className="mt-1 text-[11px] text-muted">
-                {formatINR(view.fixed.fixed, true)} fixed · {formatINR(view.fixed.variable, true)} variable
+                {formatMoney(view.fixed.fixed, true)} fixed · {formatMoney(view.fixed.variable, true)} variable
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-plane p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-subtle">Weekday / day</p>
-                <p className="text-sm font-bold tnum">{formatINR(view.weekday.weekdayAvg, true)}</p>
+                <p className="text-sm font-bold tnum">{formatMoney(view.weekday.weekdayAvg, true)}</p>
               </div>
               <div className="rounded-xl bg-plane p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-subtle">Weekend / day</p>
-                <p className="text-sm font-bold tnum">{formatINR(view.weekday.weekendAvg, true)}</p>
+                <p className="text-sm font-bold tnum">{formatMoney(view.weekday.weekendAvg, true)}</p>
               </div>
             </div>
             <p className="text-xs text-muted">
@@ -204,17 +204,17 @@ export function Analytics() {
         subtitle="What comes in, and how much of it you can count on"
       >
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="This month" value={formatINR(view.income.thisMonth, true)} />
-          <Stat label={`${today.slice(0, 4)} so far`} value={formatINR(view.income.thisYear, true)} />
+          <Stat label="This month" value={formatMoney(view.income.thisMonth, true)} />
+          <Stat label={`${today.slice(0, 4)} so far`} value={formatMoney(view.income.thisYear, true)} />
           <Stat
             label="Monthly average"
-            value={formatINR(view.income.monthlyAverage, true)}
-            hint={`${formatINR(view.income.annualisedRunRate, true)} a year at this rate`}
+            value={formatMoney(view.income.monthlyAverage, true)}
+            hint={`${formatMoney(view.income.annualisedRunRate, true)} a year at this rate`}
           />
           <Stat
             label="Dependable"
             value={`${view.income.stabilityPercent}%`}
-            hint={`${formatINR(view.income.recurringMonthly, true)} recurring`}
+            hint={`${formatMoney(view.income.recurringMonthly, true)} recurring`}
           />
         </div>
 
@@ -224,8 +224,8 @@ export function Analytics() {
               <div className="mb-1.5 flex items-baseline justify-between gap-3">
                 <span className="text-xs font-semibold">Recurring vs variable</span>
                 <span className="text-xs text-muted">
-                  {formatINR(view.income.recurringMonthly, true)} recurring ·{' '}
-                  {formatINR(view.income.variableMonthly, true)} variable
+                  {formatMoney(view.income.recurringMonthly, true)} recurring ·{' '}
+                  {formatMoney(view.income.variableMonthly, true)} variable
                 </span>
               </div>
               <Progress
@@ -252,7 +252,7 @@ export function Analytics() {
                       <span className="block truncate text-[11px] text-muted">{src.category} · {src.reason}</span>
                     </span>
                     <Badge tone={src.recurring ? 'good' : 'neutral'}>{src.recurring ? 'Recurring' : 'Variable'}</Badge>
-                    <span className="shrink-0 text-xs font-bold tnum">{formatINR(src.total, true)}</span>
+                    <span className="shrink-0 text-xs font-bold tnum">{formatMoney(src.total, true)}</span>
                   </li>
                 ))}
               </ul>
@@ -265,18 +265,18 @@ export function Analytics() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Forecast
             label="Month-end expenses"
-            value={formatINR(view.monthEnd.projectedTotal, true)}
-            detail={`${formatINR(view.monthEnd.actualToDate, true)} so far · ${Math.round(view.monthEnd.confidence * 100)}% confidence`}
+            value={formatMoney(view.monthEnd.projectedTotal, true)}
+            detail={`${formatMoney(view.monthEnd.actualToDate, true)} so far · ${Math.round(view.monthEnd.confidence * 100)}% confidence`}
           />
           <Forecast
             label="Year-end expenses"
-            value={formatINR(view.yearEnd.projectedExpense, true)}
+            value={formatMoney(view.yearEnd.projectedExpense, true)}
             detail={`${view.yearEnd.monthsRemaining} months left in ${view.yearEnd.year}`}
           />
           <Forecast
             label="Year-end savings"
-            value={formatINR(view.yearEnd.projectedSavings, true)}
-            detail={`On ${formatINR(view.yearEnd.projectedIncome, true)} projected income`}
+            value={formatMoney(view.yearEnd.projectedSavings, true)}
+            detail={`On ${formatMoney(view.yearEnd.projectedIncome, true)} projected income`}
           />
         </div>
 
@@ -305,14 +305,14 @@ export function Analytics() {
               {view.potential.opportunities.slice(0, 5).map((o) => (
                 <li key={o.category} className="flex items-center gap-2 text-xs">
                   <span className="truncate text-muted">{o.category}</span>
-                  <span className="ml-auto shrink-0 text-subtle tnum">usual {formatShortINR(o.typical)}</span>
-                  <span className="shrink-0 font-bold tnum text-warning">+{formatShortINR(o.saving)}</span>
+                  <span className="ml-auto shrink-0 text-subtle tnum">usual {formatShortMoney(o.typical)}</span>
+                  <span className="shrink-0 font-bold tnum text-warning">+{formatShortMoney(o.saving)}</span>
                 </li>
               ))}
             </ul>
             <p className="mt-2 text-[11px] text-muted">
               Bringing these back to their usual level would free up about{' '}
-              <strong className="text-ink">{formatINR(view.potential.opportunities.reduce((a, o) => a + o.saving, 0), true)}</strong>.
+              <strong className="text-ink">{formatMoney(view.potential.opportunities.reduce((a, o) => a + o.saving, 0), true)}</strong>.
             </p>
           </div>
         )}
@@ -325,7 +325,7 @@ export function Analytics() {
               <li key={i.id} className={cx('rounded-xl border-l-4 border border-line bg-plane p-3', borderFor(i.severity))}>
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                   <Badge tone={toneFor(i.severity)}>{i.tag}</Badge>
-                  {i.impact ? <span className="text-[11px] font-semibold tnum text-subtle">{formatINR(i.impact, true)}</span> : null}
+                  {i.impact ? <span className="text-[11px] font-semibold tnum text-subtle">{formatMoney(i.impact, true)}</span> : null}
                 </div>
                 <p className="text-sm font-semibold leading-snug text-ink">{i.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted">{i.detail}</p>

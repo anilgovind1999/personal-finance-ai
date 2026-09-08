@@ -3,7 +3,9 @@ import type { AppState } from '@/types';
 import type { Route } from '@/components/Shell';
 import { useStore } from '@/store/AppStore';
 import { NAV } from '@/components/Shell';
-import { Badge, Button, Card, Modal, Toggle, cx } from '@/components/ui/Primitives';
+import { Badge, Button, Card, Modal, Select, Toggle, cx } from '@/components/ui/Primitives';
+import { CURRENCIES } from '@/data/currencies';
+import { fetchRates, ratesAreStale } from '@/engine/currency';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconChevron, IconDownload, IconShield, IconTrash } from '@/components/Icons';
 import { migrate } from '@/store/reducer';
@@ -16,10 +18,23 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [thresholds, setThresholds] = useState(state.settings.alertThresholds.join(', '));
   const [retention, setRetention] = useState(String(state.settings.retentionDays));
+  const [fetchingRates, setFetchingRates] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const customCategories = state.categories.filter((c) => c.custom);
   const secondaryRoutes = NAV.filter((n) => !n.primary && n.route !== 'settings');
+
+  const refreshRates = async () => {
+    setFetchingRates(true);
+    const { table, error } = await fetchRates(state.settings.currency);
+    setFetchingRates(false);
+    if (table) {
+      dispatch({ type: 'settings/update', settings: { rateTable: table } });
+      toast(`Rates updated — ${Object.keys(table.rates).length} currencies`);
+    } else {
+      toast(error ?? 'Could not fetch rates', 'error');
+    }
+  };
 
   const exportBackup = async () => {
     try {
@@ -148,6 +163,67 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
             not sync to your other devices. Set the Firebase environment variables at build time to turn on
             accounts and sync — the steps are in the README.
           </p>
+        )}
+      </Card>
+
+      <Card title="Currency" subtitle="What your totals, budgets and reports are counted in">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="label">Home currency</span>
+            <Select
+              value={state.settings.currency}
+              onChange={(e) => {
+                dispatch({ type: 'settings/update', settings: { currency: e.target.value } });
+                toast(`Totals now shown in ${e.target.value}`);
+              }}
+              options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))}
+            />
+          </label>
+        </div>
+
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          Each transaction can be entered in whatever currency you actually paid in. It is converted once,
+          at entry, and stored in {state.settings.currency} along with the original amount and the rate
+          used — so a rate that moves next week never rewrites what last month cost.
+        </p>
+
+        <div className="mt-4 flex items-start justify-between gap-4 border-t border-line pt-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Fetch conversion rates automatically</p>
+            <p className="text-xs leading-relaxed text-muted">
+              Off by default. With it off, the app makes no internet requests at all and you type the rate
+              yourself. Turning it on lets it fetch daily rates from open.er-api.com; only currency codes
+              are sent, never anything about your spending.
+            </p>
+          </div>
+          <Toggle
+            checked={state.settings.liveRates}
+            label="Fetch conversion rates"
+            onChange={(v) => {
+              dispatch({ type: 'settings/update', settings: { liveRates: v } });
+              if (v) void refreshRates();
+            }}
+          />
+        </div>
+
+        {state.settings.liveRates && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button onClick={() => void refreshRates()} disabled={fetchingRates}>
+              {fetchingRates ? 'Fetching…' : 'Update rates now'}
+            </Button>
+            {state.settings.rateTable ? (
+              <span className="text-xs text-muted">
+                {Object.keys(state.settings.rateTable.rates).length} rates from{' '}
+                {state.settings.rateTable.source}, fetched{' '}
+                {new Date(state.settings.rateTable.fetchedAt).toLocaleString('en-IN', {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                })}
+                {ratesAreStale(state.settings.rateTable) && ' · worth refreshing'}
+              </span>
+            ) : (
+              <span className="text-xs text-muted">No rates stored yet.</span>
+            )}
+          </div>
         )}
       </Card>
 

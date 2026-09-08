@@ -9,8 +9,9 @@ import {
 import { IconEdit, IconFilter, IconLedger, IconSearch, IconTrash, IconX } from '@/components/Icons';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { applyFilters, smartSearch, SEARCH_EXAMPLES, type SearchAnswer } from '@/engine/search';
+import { rateFor } from '@/engine/currency';
 import { expensesOf, incomeOf, totalOf } from '@/engine/analytics';
-import { formatINR, fromISODate, monthKey, todayISO } from '@/lib/utils';
+import { formatMoney, fromISODate, monthKey, todayISO } from '@/lib/utils';
 
 interface Filters {
   from: string;
@@ -106,7 +107,7 @@ export function Transactions({ initialEdit }: { initialEdit?: Transaction | null
                 {answer.slices.slice(0, 6).map((s) => (
                   <li key={s.name} className="flex items-center gap-2 text-xs">
                     <span className="truncate text-muted">{s.name}</span>
-                    <span className="ml-auto shrink-0 font-semibold tnum text-ink">{formatINR(s.value)}</span>
+                    <span className="ml-auto shrink-0 font-semibold tnum text-ink">{formatMoney(s.value)}</span>
                     <span className="w-9 shrink-0 text-right tnum text-subtle">{s.share}%</span>
                   </li>
                 ))}
@@ -123,7 +124,7 @@ export function Transactions({ initialEdit }: { initialEdit?: Transaction | null
 
       <Card
         title="Transaction ledger"
-        subtitle={`${rows.length} entries · ${formatINR(totals.expense, true)} out · ${formatINR(totals.income, true)} in`}
+        subtitle={`${rows.length} entries · ${formatMoney(totals.expense, true)} out · ${formatMoney(totals.income, true)} in`}
         action={
           <Button variant={activeFilterCount ? 'primary' : 'ghost'} onClick={() => setShowFilters((s) => !s)}>
             <IconFilter width={15} height={15} />
@@ -221,7 +222,7 @@ export function Transactions({ initialEdit }: { initialEdit?: Transaction | null
               title: 'Delete this transaction?',
               message: (
                 <>
-                  <strong>{formatINR(editing.amount)} at {editing.merchant}</strong> will be removed from
+                  <strong>{formatMoney(editing.amount)} at {editing.merchant}</strong> will be removed from
                   your ledger, and from every dashboard, budget and report that counts it.
                 </>
               ),
@@ -265,7 +266,7 @@ export function TransactionList({
           <div key={date}>
             <div className="mb-1.5 flex items-baseline justify-between gap-2 px-0.5">
               <span className="text-[11px] font-bold uppercase tracking-wide text-subtle">{formatDateHeading(date)}</span>
-              {dayTotal > 0 && <span className="text-[11px] font-semibold tnum text-subtle">−{formatINR(dayTotal, true)}</span>}
+              {dayTotal > 0 && <span className="text-[11px] font-semibold tnum text-subtle">−{formatMoney(dayTotal, true)}</span>}
             </div>
             <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-raised">
               {items.map((t) => (
@@ -289,6 +290,7 @@ export function TransactionList({
                         {t.category}
                         {t.subcategory ? ` · ${t.subcategory}` : ''} · {t.paymentMode}
                         {t.source !== 'manual' && ' · AI captured'}
+                        {t.original && ` · ${t.original.currency} ${t.original.amount}`}
                       </span>
                       {!compact && t.tags.length > 0 && (
                         <span className="mt-1 flex flex-wrap gap-1">
@@ -299,7 +301,7 @@ export function TransactionList({
                       )}
                     </span>
                     <span className={cx('shrink-0 text-sm font-bold tnum', t.kind === 'income' ? 'text-good' : 'text-ink')}>
-                      {t.kind === 'income' ? '+' : '−'}{formatINR(t.amount)}
+                      {t.kind === 'income' ? '+' : '−'}{formatMoney(t.amount)}
                     </span>
                     {onEdit && <IconEdit width={14} height={14} className="shrink-0 text-subtle" />}
                   </button>
@@ -334,7 +336,8 @@ function EditTransaction({
   onSave: (t: Transaction) => void;
   onDelete: () => void | Promise<void>;
 }) {
-  const [form, setForm] = useState<TxnFormValue>(() => formFromTransaction(txn));
+  const { state } = useStore();
+  const [form, setForm] = useState<TxnFormValue>(() => formFromTransaction(txn, state.settings.currency));
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
 
   return (
@@ -352,9 +355,13 @@ function EditTransaction({
           <Button
             variant="primary"
             onClick={() => {
-              const found = validate(form);
+              const home = state.settings.currency;
+              const known = rateFor(form.currency, home, state.settings.rateTable);
+              const found = validate(form, home, known);
               setErrors(found);
-              if (!Object.keys(found).length) onSave(toTransaction(form, txn));
+              if (!Object.keys(found).length) {
+                onSave(toTransaction(form, txn, home, state.settings.rateTable));
+              }
             }}
           >
             Save changes
@@ -374,20 +381,24 @@ function EditTransaction({
 
 /** The quick-add sheet reachable from the floating button on every screen. */
 export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { dispatch, toast } = useStore();
-  const [form, setForm] = useState<TxnFormValue>(() => emptyForm());
+  const { state, dispatch, toast } = useStore();
+  const home = state.settings.currency;
+  const [form, setForm] = useState<TxnFormValue>(() => emptyForm('expense', home));
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
 
   if (!open) return null;
 
   const submit = (keepOpen: boolean) => {
-    const found = validate(form);
+    const known = rateFor(form.currency, home, state.settings.rateTable);
+    const found = validate(form, home, known);
     setErrors(found);
     if (Object.keys(found).length) return;
-    dispatch({ type: 'txn/add', txn: toTransaction(form) });
-    toast(`${formatINR(Number(form.amount))} recorded`);
-    if (keepOpen) setForm({ ...emptyForm(form.kind), date: form.date, accountId: form.accountId });
-    else onClose();
+    const txn = toTransaction(form, undefined, home, state.settings.rateTable);
+    dispatch({ type: 'txn/add', txn });
+    toast(`${formatMoney(txn.amount)} recorded`);
+    if (keepOpen) {
+      setForm({ ...emptyForm(form.kind, home), date: form.date, accountId: form.accountId, currency: form.currency });
+    } else onClose();
   };
 
   return (

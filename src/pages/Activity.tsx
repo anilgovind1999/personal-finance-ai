@@ -4,7 +4,7 @@ import { useStore } from '@/store/AppStore';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Badge, Button, Card, EmptyState, Segmented, cx, type Tone } from '@/components/ui/Primitives';
 import { IconAlert, IconCheck, IconInfo, IconTrash } from '@/components/Icons';
-import { formatINR } from '@/lib/utils';
+import { formatMoney } from '@/lib/utils';
 
 /** How each kind of change should read at a glance. */
 const ACTION_TONE: Partial<Record<AuditAction, Tone>> = {
@@ -171,9 +171,9 @@ function RecycleBin({ items }: { items: DeletedItem[] }) {
 
               <p className="mt-1.5 text-sm font-semibold text-ink">
                 {t
-                  ? `${t.kind === 'income' ? '+' : '−'}${formatINR(t.amount)} · ${t.merchant}`
+                  ? `${t.kind === 'income' ? '+' : '−'}${formatMoney(t.amount)} · ${t.merchant}`
                   : p?.draft.amount
-                    ? `${formatINR(p.draft.amount)} · ${p.draft.merchant}`
+                    ? `${formatMoney(p.draft.amount)} · ${p.draft.merchant}`
                     : 'Captured item'}
               </p>
               <p className="text-[11px] text-muted">
@@ -197,7 +197,7 @@ function RecycleBin({ items }: { items: DeletedItem[] }) {
                     const ok = await confirm({
                       title: 'Delete permanently?',
                       message: t
-                        ? `${formatINR(t.amount)} at ${t.merchant} will be gone for good.`
+                        ? `${formatMoney(t.amount)} at ${t.merchant} will be gone for good.`
                         : 'This captured item will be gone for good.',
                       reassurance: 'This cannot be undone. It will not appear in the recycle bin again.',
                       confirmLabel: 'Delete for good',

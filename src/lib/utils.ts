@@ -16,32 +16,77 @@ export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-const inrFormatter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 2,
-});
+/**
+ * Money formatting.
+ *
+ * The display currency is held module-level and set from settings, rather than
+ * threaded through every call site — the alternative was passing a currency
+ * into a hundred places that only ever want "the user's currency".
+ */
+let displayCurrency = 'INR';
+let displayLocale = 'en-IN';
 
-const inrCompactFormatter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-});
-
-/** ₹1,23,456.78 — Indian digit grouping. */
-export function formatINR(n: number, compact = false): string {
-  if (!Number.isFinite(n)) return '₹0';
-  return (compact ? inrCompactFormatter : inrFormatter).format(n);
+export function setDisplayCurrency(code: string, locale = 'en-IN'): void {
+  displayCurrency = code || 'INR';
+  displayLocale = locale || 'en-IN';
+  formatters.clear();
 }
 
-/** Short form for chart axes and dense cards: ₹1.2L, ₹12.5K, ₹1.4Cr. */
-export function formatShortINR(n: number): string {
+export function getDisplayCurrency(): string {
+  return displayCurrency;
+}
+
+const formatters = new Map<string, Intl.NumberFormat>();
+
+function formatter(code: string, compact: boolean): Intl.NumberFormat {
+  const key = `${code}|${compact}`;
+  const hit = formatters.get(key);
+  if (hit) return hit;
+  let made: Intl.NumberFormat;
+  try {
+    made = new Intl.NumberFormat(displayLocale, {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: compact ? 0 : 2,
+    });
+  } catch {
+    // An unknown code should not take the screen down.
+    made = new Intl.NumberFormat(displayLocale, { maximumFractionDigits: compact ? 0 : 2 });
+  }
+  formatters.set(key, made);
+  return made;
+}
+
+/** Formats in the user's display currency, or an explicit one when given. */
+export function formatMoney(n: number, compact = false, code?: string): string {
+  if (!Number.isFinite(n)) return formatter(code ?? displayCurrency, true).format(0);
+  return formatter(code ?? displayCurrency, compact).format(n);
+}
+
+/** Short form for chart axes and dense cards: ₹1.2L, $12.5K, ₹1.4Cr. */
+export function formatShortMoney(n: number, code?: string): string {
+  const sym = currencySymbol(code ?? displayCurrency);
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
-  if (abs >= 1_00_00_000) return `${sign}₹${round2(abs / 1_00_00_000)}Cr`;
-  if (abs >= 1_00_000) return `${sign}₹${round2(abs / 1_00_000)}L`;
-  if (abs >= 1_000) return `${sign}₹${round2(abs / 1_000)}K`;
-  return `${sign}₹${Math.round(abs)}`;
+  // Lakh and crore only make sense for the Indian numbering system.
+  const indian = (code ?? displayCurrency) === 'INR';
+  if (indian && abs >= 1_00_00_000) return `${sign}${sym}${round2(abs / 1_00_00_000)}Cr`;
+  if (indian && abs >= 1_00_000) return `${sign}${sym}${round2(abs / 1_00_000)}L`;
+  if (!indian && abs >= 1_000_000_000) return `${sign}${sym}${round2(abs / 1_000_000_000)}B`;
+  if (!indian && abs >= 1_000_000) return `${sign}${sym}${round2(abs / 1_000_000)}M`;
+  if (abs >= 1_000) return `${sign}${sym}${round2(abs / 1_000)}K`;
+  return `${sign}${sym}${Math.round(abs)}`;
+}
+
+const SYMBOLS: Record<string, string> = {
+  INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', CNY: '¥', AUD: 'A$', CAD: 'C$',
+  SGD: 'S$', HKD: 'HK$', NZD: 'NZ$', CHF: 'CHF', AED: 'AED ', SAR: 'SAR ', QAR: 'QAR ',
+  KWD: 'KWD ', OMR: 'OMR ', BHD: 'BHD ', MYR: 'RM', THB: '฿', LKR: 'Rs', NPR: 'Rs',
+  BDT: '৳', ZAR: 'R', RUB: '₽', BRL: 'R$',
+};
+
+export function currencySymbol(code: string): string {
+  return SYMBOLS[code] ?? `${code} `;
 }
 
 export function formatPercent(n: number, digits = 0): string {

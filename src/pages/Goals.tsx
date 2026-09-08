@@ -7,7 +7,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconPlus, IconTarget, IconTrash } from '@/components/Icons';
 import { projectGoal } from '@/engine/forecast';
 import { monthRange, summarise } from '@/engine/analytics';
-import { formatINR, monthKey, todayISO, uid } from '@/lib/utils';
+import { formatMoney, monthKey, todayISO, uid } from '@/lib/utils';
 
 export function Goals() {
   const { state, dispatch, toast } = useStore();
@@ -37,7 +37,7 @@ export function Goals() {
         title="Savings goals"
         subtitle={
           state.goals.length
-            ? `${formatINR(totals.saved, true)} of ${formatINR(totals.target, true)} funded`
+            ? `${formatMoney(totals.saved, true)} of ${formatMoney(totals.target, true)} funded`
             : 'Name what you are saving for and track it'
         }
         action={<Button variant="primary" onClick={() => setAdding(true)}><IconPlus width={16} height={16} /> New goal</Button>}
@@ -58,8 +58,8 @@ export function Goals() {
                     <p className="text-[11px] text-muted">{p.goal.type}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold tnum">{formatINR(p.goal.currentAmount, true)}</p>
-                    <p className="text-[11px] text-muted">of {formatINR(p.goal.targetAmount, true)}</p>
+                    <p className="text-sm font-bold tnum">{formatMoney(p.goal.currentAmount, true)}</p>
+                    <p className="text-[11px] text-muted">of {formatMoney(p.goal.targetAmount, true)}</p>
                   </div>
                 </div>
 
@@ -67,7 +67,7 @@ export function Goals() {
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <Badge tone={p.progress >= 100 ? 'good' : 'accent'}>{p.progress}% funded</Badge>
-                  {p.remaining > 0 && <span className="text-[11px] text-muted">{formatINR(p.remaining, true)} to go</span>}
+                  {p.remaining > 0 && <span className="text-[11px] text-muted">{formatMoney(p.remaining, true)} to go</span>}
                   {p.expectedCompletion && p.remaining > 0 && (
                     <Badge tone={p.onTrack === false ? 'warning' : 'neutral'}>
                       Expected {new Date(p.expectedCompletion).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
@@ -82,7 +82,7 @@ export function Goals() {
 
                 {p.monthlyRate > 0 && p.remaining > 0 && (
                   <p className="mt-1.5 text-[11px] text-muted">
-                    At {formatINR(p.monthlyRate, true)} a month, {p.monthsToGo} more month{p.monthsToGo === 1 ? '' : 's'}.
+                    At {formatMoney(p.monthlyRate, true)} a month, {p.monthsToGo} more month{p.monthsToGo === 1 ? '' : 's'}.
                   </p>
                 )}
                 {p.goal.note && <p className="mt-1.5 text-[11px] italic text-subtle">{p.goal.note}</p>}
@@ -138,7 +138,7 @@ export function Goals() {
               id: contributing.id,
               contribution: { id: uid('c'), date, amount, note },
             });
-            toast(`${formatINR(amount)} added to ${contributing.name}`);
+            toast(`${formatMoney(amount)} added to ${contributing.name}`);
             setContributing(null);
           }}
         />

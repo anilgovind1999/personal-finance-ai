@@ -16,7 +16,7 @@ import { forecastMonthEnd } from '@/engine/forecast';
 import { generateInsights, type InsightSeverity } from '@/engine/insights';
 import { financialHealth } from '@/engine/health';
 import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
-import { addMonthsToKey, formatINR, formatShortINR, monthKey, monthLabel, todayISO } from '@/lib/utils';
+import { addMonthsToKey, formatMoney, formatShortMoney, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const { state, dispatch, captureText, toast } = useStore();
@@ -127,14 +127,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="Total income"
-          value={formatINR(thisMonth.income, true)}
+          value={formatMoney(thisMonth.income, true)}
           delta={incomeDelta}
           deltaLabel="vs last month"
           icon={<IconTrendUp width={14} height={14} />}
         />
         <KpiCard
           label="Total expenses"
-          value={formatINR(thisMonth.expense, true)}
+          value={formatMoney(thisMonth.expense, true)}
           delta={expenseDelta}
           deltaLabel="vs last month"
           deltaGoodWhen="down"
@@ -142,7 +142,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
         />
         <KpiCard
           label="Net savings"
-          value={formatINR(thisMonth.net, true)}
+          value={formatMoney(thisMonth.net, true)}
           hint={`${thisMonth.savingsRate}% of income kept`}
           icon={<IconWallet width={14} height={14} />}
         />
@@ -151,20 +151,20 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
           value={`${thisMonth.savingsRate}%`}
           tone={thisMonth.savingsRate >= 30 ? 'good' : thisMonth.savingsRate >= 15 ? 'warning' : 'critical'}
           status={thisMonth.savingsRate >= 30 ? 'Strong' : thisMonth.savingsRate >= 15 ? 'Fair' : 'Low'}
-          hint={`${formatINR(thisMonth.net, true)} kept from ${formatINR(thisMonth.income, true)}`}
+          hint={`${formatMoney(thisMonth.net, true)} kept from ${formatMoney(thisMonth.income, true)}`}
         />
-        <KpiCard label="Cash balance" value={formatINR(view.cash, true)} hint="Across savings, cash and wallets" />
+        <KpiCard label="Cash balance" value={formatMoney(view.cash, true)} hint="Across savings, cash and wallets" />
         <KpiCard
           label="Card outstanding"
-          value={formatINR(view.credit, true)}
+          value={formatMoney(view.credit, true)}
           status={view.credit > 0 ? 'Due' : 'Clear'}
           tone={view.credit > 0 ? 'warning' : 'good'}
           hint={view.credit > 0 ? 'Unsettled credit card spend' : 'Every card is settled'}
         />
         <KpiCard
           label="Budget remaining"
-          value={overall ? formatINR(Math.max(0, overall.remaining), true) : '—'}
-          hint={overall ? `${overall.utilisation}% of ${formatShortINR(overall.allocated)} used` : 'No monthly budget set'}
+          value={overall ? formatMoney(Math.max(0, overall.remaining), true) : '—'}
+          hint={overall ? `${overall.utilisation}% of ${formatShortMoney(overall.allocated)} used` : 'No monthly budget set'}
           onClick={() => onNavigate('budgets')}
           footer={overall ? (
             <Progress
@@ -221,10 +221,10 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
 
         <Card title="Month-end forecast" subtitle={forecast.method}>
           <div className="mb-3">
-            <p className="text-2xl font-bold tnum">{formatINR(forecast.projectedTotal, true)}</p>
+            <p className="text-2xl font-bold tnum">{formatMoney(forecast.projectedTotal, true)}</p>
             <p className="mt-1 text-xs text-muted">
-              {formatINR(forecast.actualToDate, true)} spent over {forecast.daysElapsed} of {forecast.daysTotal} days
-              {forecast.projectedRemaining > 0 && <> · {formatINR(forecast.projectedRemaining, true)} more expected</>}
+              {formatMoney(forecast.actualToDate, true)} spent over {forecast.daysElapsed} of {forecast.daysTotal} days
+              {forecast.projectedRemaining > 0 && <> · {formatMoney(forecast.projectedRemaining, true)} more expected</>}
             </p>
             <Badge tone={forecast.confidence >= 0.7 ? 'good' : 'warning'} className="mt-2">
               {Math.round(forecast.confidence * 100)}% confidence

@@ -53,12 +53,36 @@ export interface Attachment {
   createdAt: ISODateTime;
 }
 
+/**
+ * What a transaction looked like in the currency it was actually paid in.
+ *
+ * Kept alongside the converted figure rather than instead of it: reports have
+ * to stay stable, and a rate that moves next week must not silently rewrite
+ * what last month cost.
+ */
+export interface OriginalAmount {
+  amount: number;
+  currency: string;
+  /** Units of the home currency per one unit of `currency`, at entry time. */
+  rate: number;
+  /** When that rate was captured. */
+  rateAt: ISODateTime;
+  /** Where the rate came from, so a reader knows how much to trust it. */
+  rateSource: 'live' | 'manual' | 'same';
+}
+
 /** A posted transaction in the ledger. Only approved items ever become one. */
 export interface Transaction {
   id: string;
   kind: TxnKind;
   date: ISODate;
+  /**
+   * Always in the user's home currency — every total, budget and forecast
+   * reads this, so it must be one comparable unit.
+   */
   amount: number;
+  /** Present only when the money was actually spent in another currency. */
+  original?: OriginalAmount;
   merchant: string;
   category: string;
   subcategory?: string;
@@ -122,6 +146,7 @@ export interface PendingDraft {
   kind: TxnKind;
   date: ISODate;
   amount: number;
+  original?: OriginalAmount;
   merchant: string;
   category: string;
   subcategory?: string;
@@ -231,9 +256,23 @@ export interface DeletedItem {
   pending?: PendingItem;
 }
 
+/** Cached conversion rates, expressed per one unit of the home currency. */
+export interface RateTable {
+  base: string;
+  /** code -> units of that currency per 1 unit of base. */
+  rates: Record<string, number>;
+  fetchedAt: ISODateTime;
+  source: string;
+}
+
 export interface Settings {
   theme: 'light' | 'dark';
+  /** The currency every total, budget and report is expressed in. */
   currency: string;
+  /** Fetch conversion rates from the internet. Off unless the user turns it on. */
+  liveRates: boolean;
+  /** Last rates fetched, kept so conversion still works offline. */
+  rateTable?: RateTable;
   locale: string;
   monthStartDay: number;
   /** Budget alert thresholds as percentages. */

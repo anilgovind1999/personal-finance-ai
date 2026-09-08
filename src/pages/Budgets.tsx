@@ -6,7 +6,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconAlert, IconBudget, IconPlus, IconTrash } from '@/components/Icons';
 import { budgetAlerts, evaluateAll } from '@/engine/budget';
 import { byCategory } from '@/engine/analytics';
-import { formatINR, monthKey, todayISO, uid } from '@/lib/utils';
+import { formatMoney, monthKey, todayISO, uid } from '@/lib/utils';
 
 export function Budgets() {
   const { state, dispatch, toast } = useStore();
@@ -80,21 +80,21 @@ export function Budgets() {
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-subtle">Overall {period} budget</p>
                 <p className="mt-1 text-xl font-bold tnum">
-                  {formatINR(overall.spent, true)}
-                  <span className="text-sm font-medium text-muted"> of {formatINR(overall.allocated, true)}</span>
+                  {formatMoney(overall.spent, true)}
+                  <span className="text-sm font-medium text-muted"> of {formatMoney(overall.allocated, true)}</span>
                 </p>
               </div>
               <div className="text-right">
                 <p className={cx('text-lg font-bold tnum', overall.remaining < 0 ? 'text-critical' : 'text-good')}>
-                  {overall.remaining < 0 ? `${formatINR(Math.abs(overall.remaining), true)} over` : `${formatINR(overall.remaining, true)} left`}
+                  {overall.remaining < 0 ? `${formatMoney(Math.abs(overall.remaining), true)} over` : `${formatMoney(overall.remaining, true)} left`}
                 </p>
                 <p className="text-[11px] text-muted">{overall.daysTotal - overall.daysElapsed} days remaining</p>
               </div>
             </div>
             <Progress value={overall.utilisation} tone={toneFor(overall.utilisation)} />
             <p className="mt-2 text-xs text-muted">
-              {overall.utilisation}% used · projected finish {formatINR(overall.projected, true)}
-              {overall.projectedOverrun > 0 && <span className="font-semibold text-warning"> ({formatINR(overall.projectedOverrun, true)} over)</span>}
+              {overall.utilisation}% used · projected finish {formatMoney(overall.projected, true)}
+              {overall.projectedOverrun > 0 && <span className="font-semibold text-warning"> ({formatMoney(overall.projectedOverrun, true)} over)</span>}
             </p>
           </div>
         )}
@@ -106,15 +106,15 @@ export function Budgets() {
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-sm font-semibold text-ink">{s.budget.category}</span>
                   <span className="text-xs font-semibold tnum text-muted">
-                    {formatINR(s.spent, true)} / {formatINR(s.allocated, true)}
+                    {formatMoney(s.spent, true)} / {formatMoney(s.allocated, true)}
                   </span>
                 </div>
                 <Progress value={s.utilisation} tone={toneFor(s.utilisation)} />
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge tone={toneFor(s.utilisation)}>{s.utilisation}% used</Badge>
                   <span className="text-[11px] text-muted">
-                    {s.remaining >= 0 ? `${formatINR(s.remaining, true)} remaining` : `${formatINR(Math.abs(s.remaining), true)} over`}
-                    {' · projected '}{formatINR(s.projected, true)}
+                    {s.remaining >= 0 ? `${formatMoney(s.remaining, true)} remaining` : `${formatMoney(Math.abs(s.remaining), true)} over`}
+                    {' · projected '}{formatMoney(s.projected, true)}
                   </span>
                   <button
                     type="button"
@@ -124,7 +124,7 @@ export function Budgets() {
                         title: 'Remove this budget?',
                         message: (
                           <>
-                            The {formatINR(s.allocated)} {s.budget.period} budget for{' '}
+                            The {formatMoney(s.allocated)} {s.budget.period} budget for{' '}
                             <strong>{s.budget.category}</strong> will no longer be tracked or alert you.
                           </>
                         ),
@@ -159,7 +159,7 @@ export function Budgets() {
                 <li key={c.name}>
                   <span className="chip">
                     {c.name}
-                    <span className="tnum text-ink">{formatINR(c.value, true)}</span>
+                    <span className="tnum text-ink">{formatMoney(c.value, true)}</span>
                   </span>
                 </li>
               ))}
@@ -176,7 +176,7 @@ export function Budgets() {
           onClose={() => setAdding(false)}
           onSave={(b) => {
             dispatch({ type: 'budget/upsert', budget: b });
-            toast(`${b.category === 'ALL' ? 'Overall' : b.category} budget set to ${formatINR(b.amount, true)}`);
+            toast(`${b.category === 'ALL' ? 'Overall' : b.category} budget set to ${formatMoney(b.amount, true)}`);
             setAdding(false);
           }}
         />
@@ -259,7 +259,7 @@ function BudgetDialog({
             autoFocus
           />
           {error && <span className="mt-1 block text-xs text-critical">{error}</span>}
-          {current && <span className="mt-1 block text-xs text-muted">Currently {formatINR(current.amount)} — saving replaces it from {thisMonth}.</span>}
+          {current && <span className="mt-1 block text-xs text-muted">Currently {formatMoney(current.amount)} — saving replaces it from {thisMonth}.</span>}
         </label>
 
         <p className="rounded-xl bg-plane px-3 py-2.5 text-xs leading-relaxed text-muted">

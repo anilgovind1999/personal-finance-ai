@@ -3,7 +3,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import { formatINR, formatShortINR } from '@/lib/utils';
+import { formatMoney, formatShortMoney } from '@/lib/utils';
 import { INK, foldToOther, seriesColor, type NamedValue } from './palette';
 import { cx } from '@/components/ui/Primitives';
 
@@ -39,7 +39,7 @@ function seriesTooltip(labelFor?: (l: string) => string) {
         title={labelFor ? labelFor(String(label ?? '')) : String(label ?? '')}
         rows={payload
           .filter((p) => typeof p.value === 'number')
-          .map((p) => ({ label: p.name ?? '', value: formatINR(p.value as number), color: p.color }))}
+          .map((p) => ({ label: p.name ?? '', value: formatMoney(p.value as number), color: p.color }))}
       />
     );
   };
@@ -74,7 +74,7 @@ export function TrendChart({
           </defs>
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis dataKey="label" {...AXIS} />
-          <YAxis {...AXIS} width={54} tickFormatter={(v: number) => formatShortINR(v)} />
+          <YAxis {...AXIS} width={54} tickFormatter={(v: number) => formatShortMoney(v)} />
           <Tooltip content={seriesTooltip()} cursor={{ stroke: INK.subtle, strokeWidth: 1, strokeDasharray: '4 4' }} />
           {showLegend && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: INK.muted, paddingTop: 8 }} />}
           {series.map((s) => (
@@ -99,7 +99,7 @@ export function TrendChart({
 
 /** Horizontal ranked bars — the right form for "which category is biggest". */
 export function RankedBars({
-  rows, height, valueFormatter = formatINR, limit = 8, onSelect,
+  rows, height, valueFormatter = formatMoney, limit = 8, onSelect,
 }: {
   rows: readonly NamedValue[];
   height?: number;
@@ -177,7 +177,7 @@ export function DonutChart({
                   <TooltipShell
                     title={String(payload[0].payload?.name ?? '')}
                     rows={[
-                      { label: 'Amount', value: formatINR(Number(payload[0].value)) },
+                      { label: 'Amount', value: formatMoney(Number(payload[0].value)) },
                       { label: 'Share', value: `${Math.round((Number(payload[0].value) / sum) * 100)}%` },
                     ]}
                   />
@@ -188,7 +188,7 @@ export function DonutChart({
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-[11px] uppercase tracking-wide text-subtle">{centerLabel ?? 'Total'}</span>
-          <span className="text-base font-bold tnum text-ink">{formatShortINR(sum)}</span>
+          <span className="text-base font-bold tnum text-ink">{formatShortMoney(sum)}</span>
         </div>
       </div>
       <ul className="w-full min-w-0 space-y-1.5">
@@ -196,7 +196,7 @@ export function DonutChart({
           <li key={row.name} className="flex items-center gap-2 text-xs">
             <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: seriesColor(i) }} />
             <span className="truncate text-muted">{row.name}</span>
-            <span className="ml-auto shrink-0 font-semibold tnum text-ink">{formatShortINR(row.value)}</span>
+            <span className="ml-auto shrink-0 font-semibold tnum text-ink">{formatShortMoney(row.value)}</span>
             <span className="w-9 shrink-0 text-right tnum text-subtle">{Math.round((row.value / sum) * 100)}%</span>
           </li>
         ))}
@@ -223,14 +223,14 @@ export function ColumnChart({
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="18%">
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis dataKey="label" {...AXIS} interval="preserveStartEnd" />
-          <YAxis {...AXIS} width={50} tickFormatter={(v: number) => formatShortINR(v)} />
+          <YAxis {...AXIS} width={50} tickFormatter={(v: number) => formatShortMoney(v)} />
           <Tooltip content={seriesTooltip(labelFor)} cursor={{ fill: 'rgb(var(--ink) / 0.04)' }} />
           {average !== undefined && average > 0 && (
             <ReferenceLine
               y={average}
               stroke={INK.subtle}
               strokeDasharray="4 4"
-              label={{ value: `avg ${formatShortINR(average)}`, position: 'insideTopRight', fill: INK.subtle, fontSize: 10 }}
+              label={{ value: `avg ${formatShortMoney(average)}`, position: 'insideTopRight', fill: INK.subtle, fontSize: 10 }}
             />
           )}
           <Bar dataKey={dataKey} name={name} fill={seriesColor(slot)} radius={[4, 4, 0, 0]} maxBarSize={34} />
@@ -253,7 +253,7 @@ export function ForecastChart({
         <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis dataKey="label" {...AXIS} />
-          <YAxis {...AXIS} width={54} tickFormatter={(v: number) => formatShortINR(v)} />
+          <YAxis {...AXIS} width={54} tickFormatter={(v: number) => formatShortMoney(v)} />
           <Tooltip content={seriesTooltip()} cursor={{ stroke: INK.subtle, strokeWidth: 1, strokeDasharray: '4 4' }} />
           <Legend iconType="plainline" iconSize={14} wrapperStyle={{ fontSize: 12, color: INK.muted, paddingTop: 8 }} />
           <Line type="monotone" dataKey="actual" name="Actual" stroke={seriesColor(0)} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />

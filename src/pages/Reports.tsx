@@ -6,7 +6,7 @@ import {
   buildReport, downloadCSV, downloadExcel, downloadPDF, transactionsToCSV, type ReportKind,
 } from '@/export/exporters';
 import { expensesOf, monthRange, totalOf } from '@/engine/analytics';
-import { addMonthsToKey, daysInMonth, downloadBlob, formatINR, inArtifactHost, monthKey, monthLabel, todayISO } from '@/lib/utils';
+import { addMonthsToKey, daysInMonth, downloadBlob, formatMoney, inArtifactHost, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 const REPORTS: Array<{ kind: ReportKind; title: string; detail: string }> = [
   { kind: 'monthly', title: 'Monthly Expense Report', detail: 'Month summary, category split and every transaction.' },
@@ -163,7 +163,7 @@ export function Reports() {
             <IconDownload width={16} height={16} /> Export full ledger
           </Button>
           <span className="text-xs text-muted">
-            {state.transactions.length} transactions · {formatINR(totalOf(expensesOf(state.transactions)), true)} of recorded spend
+            {state.transactions.length} transactions · {formatMoney(totalOf(expensesOf(state.transactions)), true)} of recorded spend
           </span>
         </div>
       </Card>

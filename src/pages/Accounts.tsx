@@ -6,7 +6,7 @@ import { Badge, Button, Card, EmptyState, Modal, Progress, Select, cx } from '@/
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconPlus, IconShield, IconTrash, IconWallet } from '@/components/Icons';
 import { accountBalances } from '@/engine/analytics';
-import { formatINR, todayISO, uid } from '@/lib/utils';
+import { formatMoney, todayISO, uid } from '@/lib/utils';
 
 export function Accounts() {
   const { state, dispatch, toast } = useStore();
@@ -63,21 +63,21 @@ export function Accounts() {
                     {isCard ? 'Outstanding' : 'Balance'}
                   </p>
                   <p className={cx('text-xl font-bold tnum', isCard && outstanding > 0 ? 'text-warning' : balance < 0 ? 'text-critical' : 'text-ink')}>
-                    {formatINR(balance, true)}
+                    {formatMoney(balance, true)}
                   </p>
 
                   {isCard && account.creditLimit ? (
                     <div className="mt-2">
                       <Progress value={utilisation ?? 0} tone={(utilisation ?? 0) > 70 ? 'critical' : (utilisation ?? 0) > 30 ? 'warning' : 'good'} />
                       <p className="mt-1 text-[11px] text-muted">
-                        {utilisation}% of {formatINR(account.creditLimit, true)} limit
+                        {utilisation}% of {formatMoney(account.creditLimit, true)} limit
                         {account.statementDay ? ` · statement on the ${ordinal(account.statementDay)}` : ''}
                         {account.dueDay ? ` · due on the ${ordinal(account.dueDay)}` : ''}
                       </p>
                     </div>
                   ) : (
                     <p className="mt-1 text-[11px] text-muted">
-                      Opening {formatINR(account.openingBalance, true)} · {formatINR(credits, true)} in · {formatINR(spend, true)} out
+                      Opening {formatMoney(account.openingBalance, true)} · {formatMoney(credits, true)} in · {formatMoney(spend, true)} out
                     </p>
                   )}
 

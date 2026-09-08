@@ -1,5 +1,5 @@
 import type { Account, AppState, AuditEntry, Budget, Goal, Transaction } from '@/types';
-import { formatINR, uid } from '@/lib/utils';
+import { formatMoney, uid } from '@/lib/utils';
 
 /**
  * Derives the audit entry for an action by comparing the state before and after.
@@ -20,7 +20,7 @@ function entry(
 
 function describeTxn(t: Transaction): string {
   const sign = t.kind === 'income' ? '+' : '−';
-  return `${sign}${formatINR(t.amount)} · ${t.merchant} · ${t.category} · ${t.date}`;
+  return `${sign}${formatMoney(t.amount)} · ${t.merchant} · ${t.category} · ${t.date}`;
 }
 
 function accountLabel(a: Account): string {
@@ -116,7 +116,7 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
       return entry(
         'pending.capture',
         items.length === 1 && one
-          ? `Captured from ${one.source}: ${one.draft.amount ? formatINR(one.draft.amount) : 'no amount'} · ${one.draft.merchant}`
+          ? `Captured from ${one.source}: ${one.draft.amount ? formatMoney(one.draft.amount) : 'no amount'} · ${one.draft.merchant}`
           : `Captured ${items.length} items for review`,
         { entityId: one?.id },
       );
@@ -145,7 +145,7 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
     case 'pending/reject': {
       const item = before.pending.find((p) => p.id === action.id);
       if (!item) return null;
-      const amount = item.draft.amount ? formatINR(item.draft.amount) : 'no amount';
+      const amount = item.draft.amount ? formatMoney(item.draft.amount) : 'no amount';
       return entry('pending.reject', `Rejected ${amount} · ${item.draft.merchant} — nothing was posted`, {
         entityId: item.id,
         amount: item.draft.amount,
@@ -195,7 +195,7 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
     case 'budget/upsert': {
       const b = action.budget as Budget;
       const label = b.category === 'ALL' ? `overall ${b.period}` : `${b.category} ${b.period}`;
-      return entry('budget.set', `Set ${label} budget to ${formatINR(b.amount)}`, { entityId: b.id, amount: b.amount });
+      return entry('budget.set', `Set ${label} budget to ${formatMoney(b.amount)}`, { entityId: b.id, amount: b.amount });
     }
 
     case 'budget/remove': {
@@ -223,7 +223,7 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
       const g = before.goals.find((x) => x.id === action.id);
       const c = action.contribution as Goal['contributions'][number];
       if (!g) return null;
-      return entry('goal.contribute', `Added ${formatINR(c.amount)} to "${g.name}"`, {
+      return entry('goal.contribute', `Added ${formatMoney(c.amount)} to "${g.name}"`, {
         entityId: g.id,
         amount: c.amount,
       });
@@ -240,7 +240,7 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
 
     case 'recurring/upsert': {
       const rule = action.rule as { id: string; label: string; amount: number };
-      return entry('recurring.set', `Saved recurring rule "${rule.label}" (${formatINR(rule.amount)})`, {
+      return entry('recurring.set', `Saved recurring rule "${rule.label}" (${formatMoney(rule.amount)})`, {
         entityId: rule.id,
         amount: rule.amount,
       });

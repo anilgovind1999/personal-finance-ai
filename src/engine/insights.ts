@@ -1,7 +1,7 @@
 import type { Account, Transaction } from '@/types';
 import { DISCRETIONARY_CATEGORIES, ESSENTIAL_CATEGORIES } from '@/data/categories';
 import {
-  addMonthsToKey, daysBetween, formatINR, mean, median, monthKey, monthLabel, round2, stdev, todayISO,
+  addMonthsToKey, daysBetween, formatMoney, mean, median, monthKey, monthLabel, round2, stdev, todayISO,
 } from '@/lib/utils';
 import {
   averageDailySpend, byCategory, byMerchant, creditOutstanding, deltaPercent, expensesOf,
@@ -94,7 +94,7 @@ function topCategoryInsight(ctx: Ctx): Insight[] {
     id: 'top-category',
     tag: 'Where the money goes',
     title: `${top.name} is your biggest spend this month`,
-    detail: `${formatINR(top.value)} across ${top.count} transaction${top.count === 1 ? '' : 's'} — ${top.share}% of everything you spent in ${monthLabel(ctx.month)}.`,
+    detail: `${formatMoney(top.value)} across ${top.count} transaction${top.count === 1 ? '' : 's'} — ${top.share}% of everything you spent in ${monthLabel(ctx.month)}.`,
     severity: top.share > 45 ? 'warning' : 'neutral',
     category: top.name,
     impact: top.value,
@@ -114,7 +114,7 @@ function monthOnMonthInsight(ctx: Ctx): Insight[] {
     title: up
       ? `Spending is up ${Math.round(Math.abs(delta))}% on last month`
       : `Spending is down ${Math.round(Math.abs(delta))}% on last month`,
-    detail: `${formatINR(now)} so far in ${monthLabel(ctx.month)} against ${formatINR(before)} in ${monthLabel(ctx.prevMonth)}. ${
+    detail: `${formatMoney(now)} so far in ${monthLabel(ctx.month)} against ${formatMoney(before)} in ${monthLabel(ctx.prevMonth)}. ${
       up ? topMover(ctx) : 'Keep it going — the trend is in your favour.'
     }`,
     severity: up ? (delta > 30 ? 'warning' : 'neutral') : 'positive',
@@ -131,7 +131,7 @@ function topMover(ctx: Ctx): string {
     const diff = c.value - prev;
     if (!best || diff > best.diff) best = { name: c.name, diff };
   }
-  return best && best.diff > 0 ? `${best.name} accounts for ${formatINR(round2(best.diff))} of the increase.` : '';
+  return best && best.diff > 0 ? `${best.name} accounts for ${formatMoney(round2(best.diff))} of the increase.` : '';
 }
 
 function avoidableSpendInsight(ctx: Ctx): Insight[] {
@@ -143,8 +143,8 @@ function avoidableSpendInsight(ctx: Ctx): Insight[] {
   return [{
     id: 'avoidable',
     tag: 'Avoidable expenses',
-    title: `${formatINR(total)} went to discretionary spending`,
-    detail: `That is ${share}% of this month's outgoings, across ${rows.length} transactions in categories like dining, shopping and entertainment. Trimming a quarter of it would free up ${formatINR(round2(total * 0.25))}.`,
+    title: `${formatMoney(total)} went to discretionary spending`,
+    detail: `That is ${share}% of this month's outgoings, across ${rows.length} transactions in categories like dining, shopping and entertainment. Trimming a quarter of it would free up ${formatMoney(round2(total * 0.25))}.`,
     severity: share > 40 ? 'warning' : 'neutral',
     impact: round2(total * 0.25),
   }];
@@ -173,7 +173,7 @@ function lifestyleInflationInsight(ctx: Ctx): Insight[] {
       outpacing > 5
         ? `Spending is growing ${round2(outpacing)}% faster than income`
         : `Spending has risen ${expenseGrowth}% over three months`,
-    detail: `Your last three months averaged ${formatINR(round2(recentExpense))} a month against ${formatINR(round2(olderExpense))} in the three before. Income moved ${incomeGrowth >= 0 ? 'up' : 'down'} ${Math.abs(incomeGrowth)}% over the same stretch.`,
+    detail: `Your last three months averaged ${formatMoney(round2(recentExpense))} a month against ${formatMoney(round2(olderExpense))} in the three before. Income moved ${incomeGrowth >= 0 ? 'up' : 'down'} ${Math.abs(incomeGrowth)}% over the same stretch.`,
     severity: outpacing > 10 ? 'critical' : outpacing > 0 ? 'warning' : 'neutral',
     impact: round2(recentExpense - olderExpense),
   }];
@@ -187,11 +187,11 @@ function dailyAverageInsight(ctx: Ctx): Insight[] {
   return [{
     id: 'daily-average',
     tag: 'Average daily spending',
-    title: `You are spending ${formatINR(avg)} a day`,
+    title: `You are spending ${formatMoney(avg)} a day`,
     detail:
       delta === null
         ? `Based on ${monthLabel(ctx.month)} so far.`
-        : `Against ${formatINR(lastAvg)} a day last month — ${delta >= 0 ? 'up' : 'down'} ${Math.round(Math.abs(delta))}%.`,
+        : `Against ${formatMoney(lastAvg)} a day last month — ${delta >= 0 ? 'up' : 'down'} ${Math.round(Math.abs(delta))}%.`,
     severity: delta !== null && delta > 25 ? 'warning' : 'neutral',
     impact: avg,
   }];
@@ -208,7 +208,7 @@ function weekendInsight(ctx: Ctx): Insight[] {
       split.liftPercent > 0
         ? `Weekends cost ${Math.round(split.liftPercent)}% more per day`
         : `Weekdays cost ${Math.round(Math.abs(split.liftPercent))}% more per day`,
-    detail: `Over the last three months you averaged ${formatINR(split.weekendAvg)} on a weekend day and ${formatINR(split.weekdayAvg)} on a weekday.`,
+    detail: `Over the last three months you averaged ${formatMoney(split.weekendAvg)} on a weekend day and ${formatMoney(split.weekdayAvg)} on a weekday.`,
     severity: split.liftPercent > 60 ? 'warning' : 'neutral',
     impact: round2(Math.abs(split.weekendAvg - split.weekdayAvg) * 8),
   }];
@@ -234,7 +234,7 @@ function seasonalityInsight(ctx: Ctx): Insight[] {
     id: 'seasonality',
     tag: 'Expense seasonality',
     title: `${name} is consistently your heaviest month`,
-    detail: `${name} runs ${peak.lift}% above your ${formatINR(round2(overall))} monthly average. Setting aside a little each month ahead of it takes the sting out.`,
+    detail: `${name} runs ${peak.lift}% above your ${formatMoney(round2(overall))} monthly average. Setting aside a little each month ahead of it takes the sting out.`,
     severity: 'neutral',
     impact: round2(peak.avg - overall),
   }];
@@ -268,8 +268,8 @@ function subscriptionWasteInsight(ctx: Ctx): Insight[] {
   const insights: Insight[] = [{
     id: 'subscription-load',
     tag: 'Subscription waste',
-    title: `${recurring.length} recurring subscriptions cost about ${formatINR(monthlyOutlay)} a month`,
-    detail: `That is ${formatINR(round2(monthlyOutlay * 12))} a year on ${recurring.map(([n]) => n).slice(0, 5).join(', ')}${recurring.length > 5 ? ' and others' : ''}. Cancelling the ones you no longer open is the easiest saving you have.`,
+    title: `${recurring.length} recurring subscriptions cost about ${formatMoney(monthlyOutlay)} a month`,
+    detail: `That is ${formatMoney(round2(monthlyOutlay * 12))} a year on ${recurring.map(([n]) => n).slice(0, 5).join(', ')}${recurring.length > 5 ? ' and others' : ''}. Cancelling the ones you no longer open is the easiest saving you have.`,
     severity: monthlyOutlay > 2000 ? 'warning' : 'neutral',
     impact: round2(monthlyOutlay * 12),
   }];
@@ -304,7 +304,7 @@ function duplicateSpendInsight(ctx: Ctx): Insight[] {
     id: 'duplicates',
     tag: 'Duplicate spending',
     title: `${dupes.length} possible duplicate charge${dupes.length === 1 ? '' : 's'} found`,
-    detail: `For example ${formatINR(example.amount)} at ${example.merchant} appears ${dupes[0].length} times on ${example.date}. If these were double charges, ${formatINR(wasted)} is worth reclaiming.`,
+    detail: `For example ${formatMoney(example.amount)} at ${example.merchant} appears ${dupes[0].length} times on ${example.date}. If these were double charges, ${formatMoney(wasted)} is worth reclaiming.`,
     severity: 'warning',
     impact: wasted,
   }];
@@ -325,8 +325,8 @@ function unusualSpendInsight(ctx: Ctx): Insight[] {
   return [{
     id: 'unusual-spend',
     tag: 'Unusual spending alert',
-    title: `${formatINR(top.amount)} at ${top.merchant} is well outside your usual range`,
-    detail: `Your typical transaction is ${formatINR(round2(m))}. ${outliers.length > 1 ? `${outliers.length} transactions this month stand out; the largest is shown.` : 'Worth confirming it is expected.'}`,
+    title: `${formatMoney(top.amount)} at ${top.merchant} is well outside your usual range`,
+    detail: `Your typical transaction is ${formatMoney(round2(m))}. ${outliers.length > 1 ? `${outliers.length} transactions this month stand out; the largest is shown.` : 'Worth confirming it is expected.'}`,
     severity: 'warning',
     category: top.category,
     impact: top.amount,
@@ -344,12 +344,12 @@ function savingsRateInsight(ctx: Ctx): Insight[] {
     tag: 'Savings',
     title:
       rate < 0
-        ? `You have spent ${formatINR(round2(expense - income))} more than you earned this month`
+        ? `You have spent ${formatMoney(round2(expense - income))} more than you earned this month`
         : `You are saving ${rate}% of your income this month`,
     detail:
       rate < 0
         ? 'Drawing down savings for a month is survivable, but two in a row is a pattern worth breaking.'
-        : `${formatINR(round2(income - expense))} of ${formatINR(income)} kept back. A 20-30% rate is a healthy long-term target.`,
+        : `${formatMoney(round2(income - expense))} of ${formatMoney(income)} kept back. A 20-30% rate is a healthy long-term target.`,
     severity,
     impact: round2(income - expense),
   }];
@@ -367,7 +367,7 @@ function creditUtilisationInsight(ctx: Ctx): Insight[] {
     id: 'credit-utilisation',
     tag: 'Credit health',
     title: `Card utilisation is at ${util}%`,
-    detail: `${formatINR(outstanding)} outstanding against a ${formatINR(limit)} limit. Staying under 30% protects your credit score.`,
+    detail: `${formatMoney(outstanding)} outstanding against a ${formatMoney(limit)} limit. Staying under 30% protects your credit score.`,
     severity: util > 70 ? 'critical' : 'warning',
     impact: outstanding,
   }];
@@ -380,8 +380,8 @@ function smallLeaksInsight(ctx: Ctx): Insight[] {
   return [{
     id: 'small-leaks',
     tag: 'Possible savings',
-    title: `${small.length} small payments added up to ${formatINR(total)}`,
-    detail: `Every one was under ₹200 — teas, rides, snacks. Individually invisible, together ${formatINR(round2(total * 12))} a year at this pace.`,
+    title: `${small.length} small payments added up to ${formatMoney(total)}`,
+    detail: `Every one was under ₹200 — teas, rides, snacks. Individually invisible, together ${formatMoney(round2(total * 12))} a year at this pace.`,
     severity: 'neutral',
     impact: total,
   }];
@@ -396,7 +396,7 @@ function merchantConcentrationInsight(ctx: Ctx): Insight[] {
     id: 'merchant-concentration',
     tag: 'Where the money goes',
     title: `${top.name} alone took ${top.share}% of your spending`,
-    detail: `${formatINR(top.value)} across ${top.count} visits this month. Worth a look if that is higher than you expected.`,
+    detail: `${formatMoney(top.value)} across ${top.count} visits this month. Worth a look if that is higher than you expected.`,
     severity: top.share > 40 ? 'warning' : 'neutral',
     category: top.name,
     impact: top.value,

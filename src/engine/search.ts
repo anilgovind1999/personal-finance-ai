@@ -1,6 +1,6 @@
 import type { Account, PaymentMode, Transaction, TxnKind } from '@/types';
 import { DEFAULT_CATEGORIES, PAYMENT_MODES } from '@/data/categories';
-import { addMonthsToKey, daysInMonth, formatINR, monthKey, monthLabel, round2, similarity, todayISO } from '@/lib/utils';
+import { addMonthsToKey, daysInMonth, formatMoney, monthKey, monthLabel, round2, similarity, todayISO } from '@/lib/utils';
 import { byCategory, byMerchant, byPaymentMode, expensesOf, incomeOf, totalOf, type Slice } from './analytics';
 import { findBank, findMerchant } from './parser/entities';
 
@@ -235,7 +235,7 @@ function buildAnswer(
       return {
         ...base,
         slices,
-        headline: slices.length ? `${slices[0].name} — ${formatINR(slices[0].value)}` : 'No merchants found',
+        headline: slices.length ? `${slices[0].name} — ${formatMoney(slices[0].value)}` : 'No merchants found',
         detail: slices.length
           ? `Your top ${slices.length} merchants in ${periodLabel} by total spend.`
           : `Nothing recorded in ${periodLabel}.`,
@@ -246,7 +246,7 @@ function buildAnswer(
       return {
         ...base,
         slices,
-        headline: slices.length ? `${slices[0].name} — ${formatINR(slices[0].value)} (${slices[0].share}%)` : 'No categories found',
+        headline: slices.length ? `${slices[0].name} — ${formatMoney(slices[0].value)} (${slices[0].share}%)` : 'No categories found',
         detail: slices.length ? `Category breakdown for ${periodLabel}.` : `Nothing recorded in ${periodLabel}.`,
       };
     }
@@ -258,7 +258,7 @@ function buildAnswer(
       return {
         ...base,
         slices: chosen,
-        headline: chosen.length ? `${chosen[0].name} — ${formatINR(chosen[0].value)} across ${chosen[0].count} transactions` : 'No payments found',
+        headline: chosen.length ? `${chosen[0].name} — ${formatMoney(chosen[0].value)} across ${chosen[0].count} transactions` : 'No payments found',
         detail: chosen.length
           ? `Most used ${useCards ? 'card' : 'payment mode'} in ${periodLabel}, ${chosen[0].share}% of spend.`
           : `Nothing recorded in ${periodLabel}.`,
@@ -268,15 +268,15 @@ function buildAnswer(
       return {
         ...base,
         headline: `${rows.length} transaction${rows.length === 1 ? '' : 's'}`,
-        detail: `Matching ${what} in ${periodLabel}, totalling ${formatINR(total)}.`,
+        detail: `Matching ${what} in ${periodLabel}, totalling ${formatMoney(total)}.`,
       };
     case 'average': {
       const days = new Set(rows.map((t) => t.date)).size || 1;
       const perTxn = rows.length ? round2(total / rows.length) : 0;
       return {
         ...base,
-        headline: `${formatINR(round2(total / days))} per active day`,
-        detail: `${formatINR(perTxn)} per transaction across ${rows.length} entries in ${periodLabel}.`,
+        headline: `${formatMoney(round2(total / days))} per active day`,
+        detail: `${formatMoney(perTxn)} per transaction across ${rows.length} entries in ${periodLabel}.`,
       };
     }
     case 'sum':
@@ -284,7 +284,7 @@ function buildAnswer(
       return {
         ...base,
         slices: byCategory(matched).slice(0, 6),
-        headline: formatINR(total),
+        headline: formatMoney(total),
         detail: rows.length
           ? `${rows.length} transaction${rows.length === 1 ? '' : 's'} for ${what} in ${periodLabel}.`
           : `Nothing recorded for ${what} in ${periodLabel}.`,

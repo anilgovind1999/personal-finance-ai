@@ -21,6 +21,20 @@ upload.
 
 ## Feature summary
 
+**Currency**
+- Every total, budget and report is counted in one home currency, INR by
+  default and changeable in Settings.
+- A transaction can be entered in whatever currency it was actually paid in.
+  It is converted once, at entry, and the ledger stores the converted figure
+  *plus* the original amount and the rate used — so a rate that moves next week
+  never rewrites what last month cost.
+- A rate you type wins over a fetched one, because a bank's own rate includes
+  its fees. Without any rate the app refuses the entry rather than quietly
+  treating it as 1:1.
+- Fetching rates automatically is **off by default**; with it off the app makes
+  no internet requests at all. Turning it on sends currency codes to
+  open.er-api.com and nothing else.
+
 **Income**
 - Monthly and annual totals, a monthly average and the annualised run rate.
 - Every income stream is classified **recurring or variable** from observed
@@ -120,7 +134,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 178 unit tests
+npm test         # 194 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies

@@ -7,7 +7,8 @@ import { TransactionForm, type TxnFormValue, validate } from '@/components/Trans
 import { ExtractionPreview } from '@/pages/Capture';
 import { IconCheck, IconEdit, IconInbox, IconShield, IconTrash, IconX } from '@/components/Icons';
 import { confidenceBand } from '@/engine/parser';
-import { formatINR, todayISO } from '@/lib/utils';
+import { convert, rateFor } from '@/engine/currency';
+import { formatMoney, todayISO } from '@/lib/utils';
 
 const SOURCE_LABEL: Record<string, string> = {
   sms: 'SMS', upi: 'UPI alert', whatsapp: 'WhatsApp', bank: 'Bank message',
@@ -81,7 +82,7 @@ export function Approvals() {
                     message: (
                       <>
                         <strong>
-                          {item.draft.amount ? formatINR(item.draft.amount) : 'This item'} at {item.draft.merchant}
+                          {item.draft.amount ? formatMoney(item.draft.amount) : 'This item'} at {item.draft.merchant}
                         </strong>{' '}
                         will not be added to your ledger.
                       </>
@@ -138,7 +139,7 @@ export function Approvals() {
           onClose={() => setEditing(null)}
           onSubmit={(draft) => {
             dispatch({ type: 'pending/approve', id: editing.id, draft });
-            toast(`${formatINR(draft.amount)} posted after your edits`);
+            toast(`${formatMoney(draft.amount)} posted after your edits`);
             setEditing(null);
           }}
         />
@@ -174,7 +175,7 @@ function PendingCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className={cx('text-base font-bold tnum', noAmount ? 'text-critical' : 'text-ink')}>
-              {noAmount ? 'Amount missing' : formatINR(item.draft.amount)}
+              {noAmount ? 'Amount missing' : formatMoney(item.draft.amount)}
             </span>
             <span className="truncate text-sm text-muted">{item.draft.merchant}</span>
           </div>
@@ -245,10 +246,13 @@ function EditAndApprove({
   onClose: () => void;
   onSubmit: (draft: PendingItem['draft']) => void;
 }) {
+  const { state } = useStore();
   const [form, setForm] = useState<TxnFormValue>({
     kind: item.draft.kind,
     date: item.draft.date || todayISO(),
     amount: item.draft.amount ? String(item.draft.amount) : '',
+    currency: item.draft.original?.currency ?? state.settings.currency,
+    rate: item.draft.original ? String(item.draft.original.rate) : '',
     merchant: item.draft.merchant,
     category: item.draft.category,
     subcategory: item.draft.subcategory ?? '',
@@ -266,13 +270,18 @@ function EditAndApprove({
     item.extraction.category.confidence < 0.7;
 
   const submit = () => {
-    const found = validate(form);
+    const home = state.settings.currency;
+    const known = rateFor(form.currency, home, state.settings.rateTable);
+    const found = validate(form, home, known);
     setErrors(found);
     if (Object.keys(found).length) return;
+    const typedRate = form.rate.trim() ? Number(form.rate) : undefined;
+    const converted = convert(Number(form.amount), form.currency, home, state.settings.rateTable, typedRate);
     onSubmit({
       kind: form.kind,
       date: form.date,
-      amount: Number(form.amount),
+      amount: converted.amount,
+      original: converted.original,
       merchant: form.merchant.trim() || 'Unknown',
       category: form.category,
       subcategory: form.subcategory || undefined,

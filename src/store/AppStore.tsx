@@ -6,7 +6,7 @@ import { loadState, saveState, clearState, putAttachment, deleteAttachment } fro
 import { draftFromExtraction, emptyState, migrate, reducer, type Action } from './reducer';
 import { parseMessage } from '@/engine/parser';
 import { useCloudSync, type CloudSync } from '@/sync/useCloudSync';
-import { uid } from '@/lib/utils';
+import { setDisplayCurrency, uid } from '@/lib/utils';
 
 interface StoreValue {
   state: AppState;
@@ -67,6 +67,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     const handle = setTimeout(() => void saveState(state), 250);
     return () => clearTimeout(handle);
   }, [state]);
+
+  // Every money label reads this, so set it before anything renders a total.
+  useEffect(() => {
+    setDisplayCurrency(state.settings.currency, state.settings.locale);
+  }, [state.settings.currency, state.settings.locale]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', state.settings.theme === 'dark');

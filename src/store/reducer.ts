@@ -12,6 +12,7 @@ export const STATE_VERSION = 1;
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark',
   currency: 'INR',
+  liveRates: false,
   locale: 'en-IN',
   monthStartDay: 1,
   alertThresholds: [80, 90, 100],

@@ -5,7 +5,7 @@ import {
 } from '@/engine/analytics';
 import { evaluateAll } from '@/engine/budget';
 import { projectGoal } from '@/engine/forecast';
-import { downloadBlob, formatINR, monthLabel, round2, todayISO } from '@/lib/utils';
+import { downloadBlob, formatMoney, monthLabel, round2, todayISO } from '@/lib/utils';
 
 export type ReportKind =
   | 'monthly' | 'annual' | 'income' | 'savings' | 'cashflow'
@@ -42,12 +42,12 @@ export function buildReport(kind: ReportKind, ctx: ReportContext): ReportDoc {
   const period = `${ctx.range.from} to ${ctx.range.to}`;
 
   const summary = [
-    { label: 'Total income', value: formatINR(s.income) },
-    { label: 'Total expenses', value: formatINR(s.expense) },
-    { label: 'Net savings', value: formatINR(s.net) },
+    { label: 'Total income', value: formatMoney(s.income) },
+    { label: 'Total expenses', value: formatMoney(s.expense) },
+    { label: 'Net savings', value: formatMoney(s.net) },
     { label: 'Savings rate', value: `${s.savingsRate}%` },
     { label: 'Transactions', value: String(s.txnCount) },
-    { label: 'Average per day', value: formatINR(s.avgDaily) },
+    { label: 'Average per day', value: formatMoney(s.avgDaily) },
   ];
 
   switch (kind) {
@@ -76,7 +76,7 @@ export function buildReport(kind: ReportKind, ctx: ReportContext): ReportDoc {
         title: 'Income Report',
         subtitle: period,
         summary: [
-          { label: 'Total income', value: formatINR(totalOf(income)) },
+          { label: 'Total income', value: formatMoney(totalOf(income)) },
           { label: 'Entries', value: String(income.length) },
           { label: 'Sources', value: String(new Set(income.map((t) => t.merchant)).size) },
         ],
@@ -202,8 +202,8 @@ export function buildReport(kind: ReportKind, ctx: ReportContext): ReportDoc {
         subtitle: period,
         summary: [
           { label: 'Cards', value: String(cards.length) },
-          { label: 'Total outstanding', value: formatINR(balances.reduce((a, b) => a + b.outstanding, 0)) },
-          { label: 'Total limit', value: formatINR(cards.reduce((a, c) => a + (c.creditLimit ?? 0), 0)) },
+          { label: 'Total outstanding', value: formatMoney(balances.reduce((a, b) => a + b.outstanding, 0)) },
+          { label: 'Total limit', value: formatMoney(cards.reduce((a, c) => a + (c.creditLimit ?? 0), 0)) },
         ],
         tables: [
           {

@@ -6,7 +6,7 @@ import { Badge, Button, Card, Segmented, cx } from '@/components/ui/Primitives';
 import { IconCamera, IconMessage, IconSparkles } from '@/components/Icons';
 import { confidenceBand, parseMessage, splitMessages } from '@/engine/parser';
 import { extractReceiptFields, extractionFromReceipt, receiptSummary } from '@/engine/ocr/receipt';
-import { formatINR, IS_SINGLE_FILE } from '@/lib/utils';
+import { formatMoney, IS_SINGLE_FILE } from '@/lib/utils';
 import { RecurringRules } from '@/components/RecurringRules';
 
 const SOURCES: Array<{ value: CaptureSource; label: string }> = [
@@ -290,9 +290,9 @@ function ReceiptCapture({
       {fields && result && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <ReceiptField label="Total" value={fields.total !== null ? formatINR(fields.total) : '—'} />
+            <ReceiptField label="Total" value={fields.total !== null ? formatMoney(fields.total) : '—'} />
             <ReceiptField label="Date" value={fields.date ?? 'Not found'} />
-            <ReceiptField label="GST" value={fields.gst !== null ? formatINR(fields.gst) : '—'} />
+            <ReceiptField label="GST" value={fields.gst !== null ? formatMoney(fields.gst) : '—'} />
             <ReceiptField label="Merchant" value={fields.merchant ?? 'Not found'} />
           </div>
           {receiptSummary(fields) && <p className="text-xs text-muted">{receiptSummary(fields)}</p>}
@@ -346,7 +346,7 @@ export function ExtractionPreview({ raw, result }: { raw: string; result: Extrac
       </div>
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
-        <FieldRow label="Amount" value={result.amount.value !== null ? formatINR(result.amount.value) : 'Not found'} confidence={result.amount.confidence} />
+        <FieldRow label="Amount" value={result.amount.value !== null ? formatMoney(result.amount.value) : 'Not found'} confidence={result.amount.confidence} />
         <FieldRow label="Date" value={result.date.value} confidence={result.date.confidence} />
         <FieldRow label="Category" value={result.category.value} confidence={result.category.confidence} />
         <FieldRow label="Payment" value={result.paymentMode.value} confidence={result.paymentMode.confidence} />

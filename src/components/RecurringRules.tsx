@@ -6,7 +6,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Badge, Button, Card, EmptyState, Modal, Segmented, Select, Toggle, cx } from '@/components/ui/Primitives';
 import { IconPlus, IconTrash, IconBudget } from '@/components/Icons';
 import { nextDue, recurringTotals } from '@/engine/recurring';
-import { formatINR, todayISO, uid } from '@/lib/utils';
+import { formatMoney, todayISO, uid } from '@/lib/utils';
 
 /**
  * Rent, EMIs, SIPs, subscriptions, salary — the entries you already know are
@@ -30,7 +30,7 @@ export function RecurringRules() {
       title="Recurring entries"
       subtitle={
         rules.length
-          ? `${formatINR(totals.expense, true)} out · ${formatINR(totals.income, true)} in, every month`
+          ? `${formatMoney(totals.expense, true)} out · ${formatMoney(totals.income, true)} in, every month`
           : 'Set up the charges you already know are coming'
       }
       action={<Button variant="primary" onClick={() => setAdding(true)}><IconPlus width={16} height={16} /> New rule</Button>}
@@ -62,7 +62,7 @@ export function RecurringRules() {
                 </div>
                 <div className="text-right">
                   <p className={cx('text-sm font-bold tnum', rule.kind === 'income' ? 'text-good' : 'text-ink')}>
-                    {rule.kind === 'income' ? '+' : '−'}{formatINR(rule.amount)}
+                    {rule.kind === 'income' ? '+' : '−'}{formatMoney(rule.amount)}
                   </p>
                   <p className="text-[11px] text-muted">next {nextDue(rule)}</p>
                 </div>
