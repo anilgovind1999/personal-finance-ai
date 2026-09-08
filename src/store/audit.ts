@@ -229,11 +229,29 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
       });
     }
 
-    case 'recurring/upsert':
-      return entry('recurring.set', `Saved a recurring rule`, { entityId: String(action.id ?? '') });
+    case 'recurring/runDue': {
+      const created = after.pending.length - before.pending.length;
+      if (created <= 0) return null;
+      return entry(
+        'pending.capture',
+        `${created} recurring entr${created === 1 ? 'y' : 'ies'} fell due and went to the approval queue`,
+      );
+    }
 
-    case 'recurring/remove':
-      return entry('recurring.delete', `Removed a recurring rule`, { entityId: String(action.id ?? '') });
+    case 'recurring/upsert': {
+      const rule = action.rule as { id: string; label: string; amount: number };
+      return entry('recurring.set', `Saved recurring rule "${rule.label}" (${formatINR(rule.amount)})`, {
+        entityId: rule.id,
+        amount: rule.amount,
+      });
+    }
+
+    case 'recurring/remove': {
+      const rule = before.recurring.find((r) => r.id === action.id);
+      return entry('recurring.delete', `Removed recurring rule${rule ? ` "${rule.label}"` : ''}`, {
+        entityId: String(action.id ?? ''),
+      });
+    }
 
     case 'category/add':
       return entry('category.add', `Added custom category "${(action.category as { name: string }).name}"`);

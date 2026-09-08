@@ -46,6 +46,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         // Anything past its retention window goes now, not whenever the user
         // next happens to open the recycle bin.
         dispatch({ type: 'recycle/purgeExpired' });
+        // Anything recurring that fell due while the app was closed goes to the
+        // approval queue now, not silently into the ledger.
+        dispatch({ type: 'recurring/runDue' });
       }
       hydrated.current = true;
       setReady(true);

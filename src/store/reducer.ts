@@ -3,6 +3,7 @@ import type {
   PendingItem, RecurringRule, Settings, Transaction,
 } from '@/types';
 import { describeAction } from './audit';
+import { generateDue } from '@/engine/recurring';
 import { DEFAULT_CATEGORIES } from '@/data/categories';
 import { round2, todayISO, uid } from '@/lib/utils';
 
@@ -80,6 +81,7 @@ export type Action =
   | { type: 'recycle/restore'; id: string }
   | { type: 'recycle/purge'; id: string }
   | { type: 'recycle/purgeExpired' }
+  | { type: 'recurring/runDue'; today?: string }
   | { type: 'budget/upsert'; budget: Budget }
   | { type: 'budget/remove'; id: string }
   | { type: 'goal/add'; goal: Goal }
@@ -325,6 +327,21 @@ function baseReducer(state: AppState, action: Action): AppState {
 
     case 'recurring/remove':
       return { ...state, recurring: state.recurring.filter((r) => r.id !== action.id) };
+
+    case 'recurring/runDue': {
+      // Due rules propose entries into the approval queue — never into the
+      // ledger. Marking the month generated keeps it to once per rule.
+      const generated = generateDue(state.recurring, action.today);
+      if (!generated.length) return state;
+      const byRule = new Map(generated.map((g) => [g.ruleId, g.month]));
+      return {
+        ...state,
+        pending: [...generated.map((g) => g.item), ...state.pending],
+        recurring: state.recurring.map((r) =>
+          byRule.has(r.id) ? { ...r, lastGeneratedMonth: byRule.get(r.id) } : r,
+        ),
+      };
+    }
 
     case 'category/add': {
       if (state.categories.some((c) => c.name.toLowerCase() === action.category.name.toLowerCase())) return state;

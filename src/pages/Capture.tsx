@@ -7,6 +7,7 @@ import { IconCamera, IconMessage, IconSparkles } from '@/components/Icons';
 import { confidenceBand, parseMessage, splitMessages } from '@/engine/parser';
 import { extractReceiptFields, extractionFromReceipt, receiptSummary } from '@/engine/ocr/receipt';
 import { formatINR, IS_PREVIEW_BUILD } from '@/lib/utils';
+import { RecurringRules } from '@/components/RecurringRules';
 
 const SOURCES: Array<{ value: CaptureSource; label: string }> = [
   { value: 'whatsapp', label: 'WhatsApp' },
@@ -105,6 +106,10 @@ export function Capture({ onNavigate }: { onNavigate: (r: Route) => void }) {
           />
         )}
       </Card>
+
+      {/* Recurring rules are another way entries reach the approval queue, so
+          they belong beside the capture tools rather than in their own screen. */}
+      <RecurringRules />
     </div>
   );
 }

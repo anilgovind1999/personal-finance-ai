@@ -174,9 +174,14 @@ export interface RecurringRule {
   category: string;
   paymentMode: PaymentMode;
   accountId?: string;
-  /** Day of month the entry recurs. */
+  /** Day of month the entry recurs. A day past the month's end lands on its last day. */
   dayOfMonth: number;
+  merchant: string;
+  subcategory?: string;
+  remarks?: string;
   active: boolean;
+  /** Latest month ('YYYY-MM') an entry was generated for, so it happens once. */
+  lastGeneratedMonth?: string;
   createdAt: ISODateTime;
 }
 

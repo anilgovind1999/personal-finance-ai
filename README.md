@@ -21,6 +21,20 @@ upload.
 
 ## Feature summary
 
+**Income**
+- Monthly and annual totals, a monthly average and the annualised run rate.
+- Every income stream is classified **recurring or variable** from observed
+  behaviour rather than its category label — a salary that started two months
+  ago counts as dependable, a category called "Salary" with one payment in it
+  does not — with the reason shown against each source, plus a month-to-month
+  volatility figure.
+
+**Recurring entries**
+- Rules for rent, EMIs, SIPs, subscriptions and salary. When one falls due it
+  proposes itself into the approval queue rather than posting, because a bill
+  that arrives higher than expected is exactly what you want to catch. A rule
+  fires once per month, and a day past a short month's end lands on its last day.
+
 **Capture**
 - Full entry form: date, amount (INR), merchant, category, subcategory, payment
   mode, bank account/card, remarks, tags, and bill/receipt attachments.
@@ -106,7 +120,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 140 unit tests
+npm test         # 162 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -161,6 +175,8 @@ src/
     analytics   aggregation, breakdowns, balances, period summaries
     budget      utilisation, thresholds, projected overruns
     forecast    month-end, year-end, cash projection, goals, saving potential
+    income      monthly/annual totals, recurring vs variable classification
+    recurring   due-date rules that propose entries into the approval queue
     insights    the financial-intelligence generators
     health      the weighted 0-100 financial health score
     search      natural-language question answering
