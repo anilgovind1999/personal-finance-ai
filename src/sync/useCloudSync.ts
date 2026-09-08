@@ -3,7 +3,7 @@ import type { AppState } from '@/types';
 import { migrate } from '@/store/reducer';
 import { deviceId, mergeDocs, mergeStates, oversizedDocs, splitState, type SyncDocs } from './model';
 import {
-  cloudConfigured, fetchDocs, isInvited, refreshAccount, signOutOfCloud, watchAccount, watchDocs,
+  cloudConfigured, fetchDocs, refreshAccount, signOutOfCloud, watchAccount, watchDocs,
   writeDocs, type AccountInfo,
 } from './firebase';
 
@@ -18,9 +18,7 @@ export interface CloudSync {
   error: string | null;
   /** Set while the account is being resolved, so the UI does not flash. */
   initialising: boolean;
-  /** null while unknown; false when the owner has not invited this address. */
-  invited: boolean | null;
-  /** Re-reads the account and its invite status, after verifying or being added. */
+  /** Re-reads the account, to pick up a verification completed elsewhere. */
   recheckAccess: () => Promise<void>;
   signOut: () => Promise<void>;
   /** Pushes now rather than waiting for the debounce. */
@@ -49,7 +47,6 @@ export function useCloudSync(
   const [phase, setPhase] = useState<SyncPhase>(configured ? 'connecting' : 'off');
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [invited, setInvited] = useState<boolean | null>(null);
 
   const device = useRef(deviceId());
   const stateRef = useRef(state);
@@ -66,23 +63,8 @@ export function useCloudSync(
       if (cancelled) return;
       setAccount(next);
       setPhase(next ? 'connecting' : 'signed-out');
-      if (!next) {
-        firstSyncDone.current = false;
-        setInvited(null);
-        setInitialising(false);
-        return;
-      }
-      // An unverified address cannot be on the list as far as the rules are
-      // concerned, so do not spend a read asking.
-      if (!next.emailVerified) {
-        setInvited(false);
-        setInitialising(false);
-        return;
-      }
-      void isInvited(next.email).then((ok) => {
-        setInvited(ok);
-        setInitialising(false);
-      });
+      if (!next) firstSyncDone.current = false;
+      setInitialising(false);
     }).then((un) => {
       if (cancelled) un();
       else unsubscribe = un;
@@ -96,7 +78,8 @@ export function useCloudSync(
   // First sync after sign-in: pull, merge with what is on this device, push back.
   useEffect(() => {
     if (!configured || !account || !ready || firstSyncDone.current) return;
-    if (!account.emailVerified || invited !== true) return;
+    // The rules reject an unverified caller, so do not even try.
+    if (!account.emailVerified) return;
     let cancelled = false;
 
     (async () => {
@@ -131,7 +114,7 @@ export function useCloudSync(
     return () => {
       cancelled = true;
     };
-  }, [configured, account, ready, applyRemote, invited]);
+  }, [configured, account, ready, applyRemote]);
 
   // Live updates from the user's other devices.
   useEffect(() => {
@@ -198,15 +181,12 @@ export function useCloudSync(
 
   const recheckAccess = useCallback(async () => {
     const fresh = await refreshAccount();
-    if (!fresh) return;
-    setAccount(fresh);
-    setInvited(fresh.emailVerified ? await isInvited(fresh.email) : false);
+    if (fresh) setAccount(fresh);
   }, []);
 
   const signOut = useCallback(async () => {
     await signOutOfCloud();
     firstSyncDone.current = false;
-    setInvited(null);
     setPhase('signed-out');
     setLastSyncedAt(null);
   }, []);
@@ -218,7 +198,6 @@ export function useCloudSync(
     lastSyncedAt,
     error,
     initialising,
-    invited,
     recheckAccess,
     signOut,
     pushNow: () => void push(stateRef.current),

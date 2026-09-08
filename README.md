@@ -134,7 +134,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 194 unit tests
+npm test         # 202 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -189,17 +189,48 @@ reconnects.
 7. On Netlify or Vercel, add the same `VITE_FIREBASE_*` values as environment
    variables, and add your deployed domain under **Authentication → Settings →
    Authorised domains**.
-8. Invite people: **Firestore → Start collection → `allowlist`**, and add one
-   document per person whose **Document ID is their email address in lower
-   case**. The document needs no fields. Remove the document to revoke access.
 
-**Who can get in.** Firebase Auth lets anyone create an account — that is a
-property of Auth, and no security rule can prevent it. What the rules prevent is
-an uninvited account reading or writing *anything*, so the app is inert for
-them; they see a "not on the invite list" screen. Access is keyed to a verified
-email address, so registering under someone else's address does not work: the
-verification link has to be opened first. To stop account creation outright,
-turn off self-registration in **Authentication → Settings → User actions**.
+**Who can sign up.** Anyone with the URL can create an account with their own
+email and password. There is no invite list and nothing for you to approve.
+
+**Email verification is required.** Registration sends a verification link, and
+the security rules reject an unverified account, so no financial data can be
+read or written until the address is confirmed. Users who have not confirmed see
+a screen explaining it, with *Resend verification email* and *I've verified my
+email*; it also polls, so confirming on a phone continues the session already
+open on a laptop.
+
+**How users are kept apart.** Every document lives under
+`users/{firebase-auth-uid}`, and the rules compare that path segment against the
+caller's own UID. Ownership is keyed to the UID and never to an email address —
+an email can be changed or re-registered, a UID cannot. There is no rule
+anywhere granting a signed-in user access to anyone else's subtree, and a
+default-deny rule covers everything outside it.
+
+### Usage statistics
+
+The app can report **how much it is used**, so its author can see how many
+people have accounts and which features get opened. This is off in any build
+without `VITE_FIREBASE_MEASUREMENT_ID`, and users can switch it off in
+Settings.
+
+**No financial information is ever sent.** Not amounts, merchants, categories,
+accounts, balances, income, receipts, SMS bodies or OCR text. That is enforced
+structurally rather than by care:
+
+- Event names come from a fixed list in `src/sync/analytics.ts`; an arbitrary
+  string cannot be logged.
+- Only six parameter keys are permitted, and every value must be a short
+  lower-case slug. A merchant name, an SMS body or a rupee amount fails that
+  test and is dropped before the call — there is no shape in which financial
+  data could be expressed.
+- Counts are bucketed (`1`, `2-5`, `6-20`, …) so an exact figure never leaves
+  the device.
+- Users are identified to Analytics by their Firebase UID. An email address is
+  a person's identity and is never used.
+
+Nine tests in `src/sync/analytics.test.ts` assert this, including that a real
+bank SMS, a merchant name and an email address are all rejected.
 
 ### Shipping updates to people
 

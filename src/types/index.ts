@@ -271,6 +271,8 @@ export interface Settings {
   currency: string;
   /** Fetch conversion rates from the internet. Off unless the user turns it on. */
   liveRates: boolean;
+  /** Send anonymous usage counts. Never financial data — see sync/analytics.ts. */
+  usageAnalytics: boolean;
   /** Last rates fetched, kept so conversion still works offline. */
   rateTable?: RateTable;
   locale: string;

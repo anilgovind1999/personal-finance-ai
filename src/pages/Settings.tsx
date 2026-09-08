@@ -6,6 +6,7 @@ import { NAV } from '@/components/Shell';
 import { Badge, Button, Card, Modal, Select, Toggle, cx } from '@/components/ui/Primitives';
 import { CURRENCIES } from '@/data/currencies';
 import { fetchRates, ratesAreStale } from '@/engine/currency';
+import { analyticsAvailable } from '@/sync/analytics';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconChevron, IconDownload, IconShield, IconTrash } from '@/components/Icons';
 import { migrate } from '@/store/reducer';
@@ -344,6 +345,34 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
           <p className="text-xs text-muted">
             No custom categories yet. Add one from the amount entry form when a transaction does not fit
             the built-in list.
+          </p>
+        )}
+      </Card>
+
+      <Card title="Usage statistics" subtitle="Counting how the app is used, never what you spend">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Share anonymous usage</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              Sends which screens and features get opened, so the app's author can see what people
+              actually use. <strong className="text-ink">No financial information is ever sent</strong> —
+              not amounts, merchants, categories, accounts, receipts, messages or OCR text. Events carry
+              short fixed labels like "dashboard" or "receipt_scan" and nothing else, and you are counted
+              by an anonymous account id rather than your email address.
+            </p>
+          </div>
+          <Toggle
+            checked={state.settings.usageAnalytics}
+            label="Share anonymous usage"
+            onChange={(v) => {
+              dispatch({ type: 'settings/update', settings: { usageAnalytics: v } });
+              toast(v ? 'Anonymous usage sharing on' : 'Usage sharing off', 'info');
+            }}
+          />
+        </div>
+        {!analyticsAvailable() && (
+          <p className="mt-3 text-xs text-subtle">
+            This build has no analytics configured, so nothing is sent either way.
           </p>
         )}
       </Card>

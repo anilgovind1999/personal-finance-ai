@@ -16,6 +16,7 @@ import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { SignIn } from '@/pages/SignIn';
 import { AccessGate } from '@/pages/AccessGate';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { track } from '@/sync/analytics';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 const ROUTES: Route[] = [
@@ -44,6 +45,8 @@ function Router() {
     window.location.hash = `#/${next}`;
     setRoute(next);
     window.scrollTo({ top: 0 });
+    // The route name only — a fixed slug from the Route union.
+    void track('screen_view', { screen: next });
   };
 
   // A cloud-enabled build waits for the account before showing anything, so a
@@ -58,12 +61,12 @@ function Router() {
 
   if (cloud.configured && !cloud.account) return <SignIn />;
 
-  // Signed in, but not yet allowed through: explain which of the two it is.
-  if (cloud.configured && cloud.account && (!cloud.account.emailVerified || cloud.invited === false)) {
+  // Signed in but not yet confirmed: the rules will reject this account until
+  // the address is proven, so explain that rather than showing a broken app.
+  if (cloud.configured && cloud.account && !cloud.account.emailVerified) {
     return (
       <AccessGate
         account={cloud.account}
-        reason={cloud.account.emailVerified ? 'not-invited' : 'unverified'}
         onSignOut={() => void cloud.signOut()}
         onRecheck={() => void cloud.recheckAccess()}
       />

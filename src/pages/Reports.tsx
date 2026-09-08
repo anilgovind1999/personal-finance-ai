@@ -6,6 +6,7 @@ import {
   buildReport, downloadCSV, downloadExcel, downloadPDF, transactionsToCSV, type ReportKind,
 } from '@/export/exporters';
 import { expensesOf, monthRange, totalOf } from '@/engine/analytics';
+import { track } from '@/sync/analytics';
 import { addMonthsToKey, daysInMonth, downloadBlob, formatMoney, inArtifactHost, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 const REPORTS: Array<{ kind: ReportKind; title: string; detail: string }> = [
@@ -66,6 +67,7 @@ export function Reports() {
       if (format === 'csv') await downloadCSV(doc, `${stem}.csv`);
       else if (format === 'excel') await downloadExcel(doc, `${stem}.xlsx`);
       else await downloadPDF(doc, `${stem}.pdf`);
+      void track('report_exported', { format });
       toast(`${doc.title} exported as ${format.toUpperCase()}`);
     } catch (err) {
       toast(`Export failed: ${err instanceof Error ? err.message : 'unknown error'}`, 'error');

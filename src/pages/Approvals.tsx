@@ -8,6 +8,7 @@ import { ExtractionPreview } from '@/pages/Capture';
 import { IconCheck, IconEdit, IconInbox, IconShield, IconTrash, IconX } from '@/components/Icons';
 import { confidenceBand } from '@/engine/parser';
 import { convert, rateFor } from '@/engine/currency';
+import { track } from '@/sync/analytics';
 import { formatMoney, todayISO } from '@/lib/utils';
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -92,6 +93,7 @@ export function Approvals() {
                   });
                   if (!ok) return;
                   dispatch({ type: 'pending/reject', id: item.id });
+                  void track('capture_reviewed', { outcome: 'rejected', source: item.source });
                   toast('Rejected — nothing was posted', 'info');
                 }}
                 onDelete={async () => {
@@ -139,6 +141,7 @@ export function Approvals() {
           onClose={() => setEditing(null)}
           onSubmit={(draft) => {
             dispatch({ type: 'pending/approve', id: editing.id, draft });
+            void track('capture_reviewed', { outcome: 'approved', source: editing.source });
             toast(`${formatMoney(draft.amount)} posted after your edits`);
             setEditing(null);
           }}

@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Button, Card } from '@/components/ui/Primitives';
-import { IconInfo, IconShield, IconSparkles } from '@/components/Icons';
+import { IconShield, IconSparkles } from '@/components/Icons';
 import { authErrorMessage, refreshAccount, resendVerification, type AccountInfo } from '@/sync/firebase';
 
 /**
- * Shown to someone who is signed in but cannot use the app yet — either their
- * email is unproven, or the owner has not invited them.
+ * Shown to someone who is signed in but has not confirmed their email address.
  *
- * Both are explained plainly rather than left as a broken-looking app. Nothing
- * here grants access: the security rules decide that, and this screen only
- * reports what they will say.
+ * The security rules reject an unverified caller, so without this screen the
+ * app would simply look broken. Nothing here grants access — it only explains
+ * what the rules will say, and offers the two things that resolve it.
  */
 export function AccessGate({
-  account, reason, onSignOut, onRecheck,
+  account, onSignOut, onRecheck,
 }: {
   account: AccountInfo;
-  reason: 'unverified' | 'not-invited';
   onSignOut: () => void;
   onRecheck: () => void;
 }) {
@@ -26,13 +24,12 @@ export function AccessGate({
 
   // Verification happens in another tab or on the phone, so keep looking.
   useEffect(() => {
-    if (reason !== 'unverified') return;
     const handle = setInterval(async () => {
       const fresh = await refreshAccount();
       if (fresh?.emailVerified) onRecheck();
     }, 5000);
     return () => clearInterval(handle);
-  }, [reason, onRecheck]);
+  }, [onRecheck]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-plane px-4 py-10">
@@ -48,72 +45,46 @@ export function AccessGate({
         </div>
 
         <Card>
-          {reason === 'unverified' ? (
-            <>
-              <h2 className="text-sm font-semibold">Confirm your email address</h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-muted">
-                We sent a link to <strong className="text-ink">{account.email}</strong>. Open it, and this
-                page will continue on its own.
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-muted">
-                Access is granted per email address, so the address has to be proven before your ledger
-                can be opened. Check your spam folder if it has not arrived.
-              </p>
+          <h2 className="text-sm font-semibold">Confirm your email address</h2>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            We sent a link to <strong className="text-ink">{account.email}</strong>. Open it, and this
+            page will continue on its own.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            Confirming proves the address belongs to you before any of your financial data is stored.
+            Check your spam folder if it has not arrived.
+          </p>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true); setError(''); setNotice('');
-                    try {
-                      await resendVerification();
-                      setNotice('Sent. Check your inbox.');
-                    } catch (err) {
-                      setError(authErrorMessage(err));
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Resend the link
-                </Button>
-                <Button
-                  disabled={checking}
-                  onClick={async () => {
-                    setChecking(true);
-                    await refreshAccount();
-                    onRecheck();
-                    setChecking(false);
-                  }}
-                >
-                  {checking ? 'Checking…' : "I've confirmed it"}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-sm font-semibold">Your account is not on the invite list</h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-muted">
-                FinSight is shared with a small group. Ask the owner to add{' '}
-                <strong className="text-ink">{account.email}</strong> to the invite list, then check again.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  disabled={checking}
-                  onClick={async () => {
-                    setChecking(true);
-                    await refreshAccount();
-                    onRecheck();
-                    setChecking(false);
-                  }}
-                >
-                  {checking ? 'Checking…' : 'Check again'}
-                </Button>
-              </div>
-            </>
-          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true); setError(''); setNotice('');
+                try {
+                  await resendVerification();
+                  setNotice('Sent. Check your inbox.');
+                } catch (err) {
+                  setError(authErrorMessage(err));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Resend verification email
+            </Button>
+            <Button
+              disabled={checking}
+              onClick={async () => {
+                setChecking(true);
+                await refreshAccount();
+                onRecheck();
+                setChecking(false);
+              }}
+            >
+              {checking ? 'Checking…' : "I've verified my email"}
+            </Button>
+          </div>
 
           {notice && <p className="mt-3 text-xs font-medium text-good">{notice}</p>}
           {error && <p className="mt-3 text-xs font-medium text-critical">{error}</p>}
@@ -126,14 +97,10 @@ export function AccessGate({
         </Card>
 
         <div className="flex items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3">
-          {reason === 'unverified' ? (
-            <IconShield width={16} height={16} className="mt-0.5 shrink-0 text-accent" />
-          ) : (
-            <IconInfo width={16} height={16} className="mt-0.5 shrink-0 text-accent" />
-          )}
+          <IconShield width={16} height={16} className="mt-0.5 shrink-0 text-accent" />
           <p className="text-xs leading-relaxed text-muted">
-            Nothing you enter is stored until your account has access, and no other person's data is
-            reachable from here at any point.
+            Nothing is stored against your account until the address is confirmed, and no other person's
+            data is reachable from here at any point.
           </p>
         </div>
       </div>

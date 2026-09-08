@@ -3,50 +3,33 @@ rules_version = '2';
 // Security rules for FinSight.
 //
 // These rules — not the sign-in screen — are what keep one person's ledger away
-// from another's, and what keeps strangers out. They are enforced by Firestore
-// itself, so a modified client cannot talk its way past them.
+// from another's. They are enforced by Firestore itself, so a modified client
+// cannot talk its way past them.
+//
+// Ownership is keyed to the Firebase Auth UID, never to an email address. An
+// email can be changed or re-registered; a UID cannot, and it is the only
+// identifier Firestore can verify against the request.
 //
 // Deploy with:  npx firebase-tools deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // An invited person is one whose email address the owner has added to the
-    // `allowlist` collection, as a document whose ID is the lower-cased email.
-    //
-    // Firebase Auth will still let anyone create an account — that is a
-    // property of Auth, not something rules can prevent. What this stops is an
-    // uninvited account being able to read or write ANY data, which makes the
-    // app inert for them. To stop account creation itself, turn off
-    // self-registration in the Firebase console.
-    function invited() {
-      return request.auth != null
-        && request.auth.token.email != null
-        && request.auth.token.email_verified == true
-        && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email.lower()));
+    // Anyone may register, but a confirmed email address is required before any
+    // data can be read or written. Firebase issues a token claim for this, so
+    // the check cannot be spoofed by the client.
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
-    // A signed-in person may check whether they themselves are on the list, so
-    // the app can explain the situation rather than failing silently. They
-    // cannot enumerate the list or add themselves to it — that is the owner's
-    // job, from the Firebase console.
-    match /allowlist/{email} {
-      allow get: if request.auth != null
-                 && request.auth.token.email != null
-                 && request.auth.token.email.lower() == email;
-      allow list, create, update, delete: if false;
-    }
-
-    // A user's ledger: readable and writable by that user alone, and only while
-    // they are on the allowlist. Removing someone from the list revokes their
-    // access immediately, without deleting anything they own.
+    // A user's ledger. `userId` is matched against the caller's own UID, so
+    // this rule can only ever grant a user access to their own subtree — there
+    // is no path by which one user reaches another's documents.
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId
-                         && invited();
+      allow read, write: if verified() && request.auth.uid == userId;
     }
 
     // Everything else is denied. This default matters: without it, a collection
-    // added at the root in future would be wide open.
+    // added at the root in future would be wide open to any signed-in user.
     match /{document=**} {
       allow read, write: if false;
     }

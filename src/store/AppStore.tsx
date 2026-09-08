@@ -6,6 +6,7 @@ import { loadState, saveState, clearState, putAttachment, deleteAttachment } fro
 import { draftFromExtraction, emptyState, migrate, reducer, type Action } from './reducer';
 import { parseMessage } from '@/engine/parser';
 import { useCloudSync, type CloudSync } from '@/sync/useCloudSync';
+import { identify, setAnalyticsEnabled, track } from '@/sync/analytics';
 import { setDisplayCurrency, uid } from '@/lib/utils';
 
 interface StoreValue {
@@ -67,6 +68,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     const handle = setTimeout(() => void saveState(state), 250);
     return () => clearTimeout(handle);
   }, [state]);
+
+  useEffect(() => {
+    setAnalyticsEnabled(state.settings.usageAnalytics);
+  }, [state.settings.usageAnalytics]);
 
   // Every money label reads this, so set it before anything renders a total.
   useEffect(() => {
@@ -145,6 +150,14 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const cloud = useCloudSync(state, ready, applyRemote);
+
+  // Counted by account so the owner can see how many people use the app. The
+  // Firebase UID is used, never an email address.
+  useEffect(() => {
+    if (!ready) return;
+    void identify(cloud.account?.uid ?? null);
+    void track('app_open');
+  }, [ready, cloud.account?.uid]);
 
   const value = useMemo<StoreValue>(
     () => ({

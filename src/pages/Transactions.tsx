@@ -10,6 +10,7 @@ import { IconEdit, IconFilter, IconLedger, IconSearch, IconTrash, IconX } from '
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { applyFilters, smartSearch, SEARCH_EXAMPLES, type SearchAnswer } from '@/engine/search';
 import { rateFor } from '@/engine/currency';
+import { track } from '@/sync/analytics';
 import { expensesOf, incomeOf, totalOf } from '@/engine/analytics';
 import { formatMoney, fromISODate, monthKey, todayISO } from '@/lib/utils';
 
@@ -395,6 +396,7 @@ export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void
     if (Object.keys(found).length) return;
     const txn = toTransaction(form, undefined, home, state.settings.rateTable);
     dispatch({ type: 'txn/add', txn });
+    void track('transaction_recorded', { feature: 'manual_entry' });
     toast(`${formatMoney(txn.amount)} recorded`);
     if (keepOpen) {
       setForm({ ...emptyForm(form.kind, home), date: form.date, accountId: form.accountId, currency: form.currency });

@@ -19,6 +19,8 @@ export interface FirebaseConfig {
   storageBucket?: string;
   messagingSenderId?: string;
   appId: string;
+  /** Only set when the project has Google Analytics enabled. */
+  measurementId?: string;
 }
 
 export function readConfig(): FirebaseConfig | null {
@@ -35,6 +37,7 @@ export function readConfig(): FirebaseConfig | null {
     appId,
     storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    measurementId: env.VITE_FIREBASE_MEASUREMENT_ID,
   };
 }
 
@@ -154,8 +157,8 @@ export async function registerWithPassword(email: string, password: string, name
   const { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } = await import('firebase/auth');
   const cred = await createUserWithEmailAndPassword(svc.auth, email.trim(), password);
   if (name?.trim()) await updateProfile(cred.user, { displayName: name.trim() }).catch(() => undefined);
-  // Access is granted by email address, so the address has to be proven — or
-  // anyone could register under an invited person's email and walk in.
+  // Registration is open, but the address still has to be proven: the security
+  // rules refuse to read or write anything until email_verified is true.
   await sendEmailVerification(cred.user).catch(() => undefined);
 }
 
@@ -175,25 +178,6 @@ export async function refreshAccount(): Promise<AccountInfo | null> {
   await user.reload();
   await user.getIdToken(true);
   return toAccount(user);
-}
-
-/**
- * Whether this address is on the owner's allowlist.
- *
- * The rules allow a signed-in person to read only their own entry, so this
- * cannot be used to enumerate who else has access. A denial from the rules is
- * indistinguishable from a missing entry, and both mean the same thing here.
- */
-export async function isInvited(email: string | null): Promise<boolean> {
-  const svc = await services();
-  if (!svc || !email) return false;
-  try {
-    const { doc, getDoc } = await import('firebase/firestore');
-    const snap = await getDoc(doc(svc.db, 'allowlist', email.trim().toLowerCase()));
-    return snap.exists();
-  } catch {
-    return false;
-  }
 }
 
 export async function signInWithGoogle(): Promise<void> {
@@ -217,7 +201,10 @@ export async function signOutOfCloud(): Promise<void> {
   await signOut(svc.auth);
 }
 
-/** Every document lives under the signing-in user, which is what isolates them. */
+/**
+ * Every document lives under the signing-in user's UID, which is what isolates
+ * one person's ledger from another's. The rules verify this same UID.
+ */
 function docPath(uid: string, name: SyncDocName): [string, string, string, string] {
   return ['users', uid, 'state', name];
 }
