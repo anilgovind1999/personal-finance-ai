@@ -14,6 +14,7 @@ import { Settings } from '@/pages/Settings';
 import { Activity } from '@/pages/Activity';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { SignIn } from '@/pages/SignIn';
+import { InstallPrompt } from '@/components/InstallPrompt';
 
 const ROUTES: Route[] = [
   'dashboard', 'transactions', 'capture', 'approvals', 'analytics',
@@ -86,6 +87,7 @@ function Router() {
       {route === 'activity' && <Activity />}
       {route === 'settings' && <Settings onNavigate={navigate} />}
       <QuickAdd open={quickAdd} onClose={() => setQuickAdd(false)} />
+      <InstallPrompt />
     </Shell>
   );
 }

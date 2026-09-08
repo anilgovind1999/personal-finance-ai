@@ -325,7 +325,15 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
           result to a mandatory approval queue. Only what you approve reaches the ledger, dashboard,
           budgets, forecasts and reports.
         </p>
-        <p className={cx('mt-3 text-[11px] text-subtle')}>Version 1.0.0 · All amounts in INR</p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/12 text-xs font-bold text-accent">
+            G
+          </span>
+          <p className="text-xs font-semibold text-ink">
+            Created by Govind
+          </p>
+          <p className={cx('ml-auto text-[11px] text-subtle')}>Version 1.1.0 · All amounts in INR</p>
+        </div>
       </Card>
 
       <Modal

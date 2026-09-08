@@ -140,6 +140,13 @@ build is the case that matters — `downloadBlob` routes the save through the
 host, which shows the viewer a confirmation naming the file. A viewer who
 declines is not treated as an error.
 
+### Installing it like an app
+
+The deployed app is a progressive web app: on Android or desktop Chrome an
+install prompt appears, and on iOS Safari it is *Share → Add to Home Screen*.
+It then opens full screen with its own icon, and a service worker lets it open
+offline. This needs the app served over https — a `file://` copy skips it.
+
 ### Accounts and cross-device sync
 
 Out of the box the app stores everything in your browser's IndexedDB: no

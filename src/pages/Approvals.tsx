@@ -23,38 +23,12 @@ export function Approvals() {
   const confirm = useConfirm();
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [editing, setEditing] = useState<PendingItem | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
 
   const items = useMemo(
     () => state.pending.filter((p) => p.status === filter).sort((a, b) => b.receivedAt.localeCompare(a.receivedAt)),
     [state.pending, filter],
   );
   const pendingCount = state.pending.filter((p) => p.status === 'pending').length;
-
-  const toggle = (id: string) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-
-  const approve = (item: PendingItem) => {
-    if (!item.draft.amount || item.draft.amount <= 0) {
-      toast('Add an amount before approving this one', 'error');
-      setEditing(item);
-      return;
-    }
-    dispatch({ type: 'pending/approve', id: item.id });
-    setSelected((prev) => prev.filter((x) => x !== item.id));
-    toast(`${formatINR(item.draft.amount)} posted to your ledger`);
-  };
-
-  const approveSelected = () => {
-    const valid = items.filter((i) => selected.includes(i.id) && i.draft.amount > 0);
-    if (!valid.length) {
-      toast('Nothing selected can be approved yet', 'error');
-      return;
-    }
-    dispatch({ type: 'pending/approveMany', ids: valid.map((i) => i.id) });
-    toast(`${valid.length} transaction${valid.length === 1 ? '' : 's'} posted`);
-    setSelected([]);
-  };
 
   return (
     <div className="space-y-4">
@@ -64,10 +38,7 @@ export function Approvals() {
         action={
           <Segmented
             value={filter}
-            onChange={(v) => {
-              setFilter(v);
-              setSelected([]);
-            }}
+            onChange={setFilter}
             options={[
               { value: 'pending', label: `Pending${pendingCount ? ` (${pendingCount})` : ''}` },
               { value: 'approved', label: 'Approved' },
@@ -79,26 +50,12 @@ export function Approvals() {
         <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-line bg-plane px-3 py-2.5">
           <IconShield width={16} height={16} className="mt-0.5 shrink-0 text-accent" />
           <p className="text-xs leading-relaxed text-muted">
-            Approval is mandatory. Only what you approve updates the expense ledger, dashboard,
-            reports and analytics.
+            Approval is mandatory, and every item is opened for review first — a bank message rarely
+            says what an expense was <em>for</em>, so the category is a guess until you confirm it. Only
+            what you approve updates the ledger, dashboard, reports and analytics.
           </p>
         </div>
 
-        {filter === 'pending' && items.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Button
-              variant="quiet"
-              onClick={() => setSelected(selected.length === items.length ? [] : items.map((i) => i.id))}
-            >
-              {selected.length === items.length ? 'Clear selection' : 'Select all'}
-            </Button>
-            {selected.length > 0 && (
-              <Button variant="primary" onClick={approveSelected}>
-                <IconCheck width={16} height={16} /> Approve {selected.length}
-              </Button>
-            )}
-          </div>
-        )}
 
         {items.length === 0 ? (
           <EmptyState
@@ -117,10 +74,7 @@ export function Approvals() {
                 key={item.id}
                 item={item}
                 accounts={state.accounts}
-                selected={selected.includes(item.id)}
-                onToggle={() => toggle(item.id)}
-                onApprove={() => approve(item)}
-                onEdit={() => setEditing(item)}
+                onReview={() => setEditing(item)}
                 onReject={async () => {
                   const ok = await confirm({
                     title: 'Reject this transaction?',
@@ -194,14 +148,11 @@ export function Approvals() {
 }
 
 function PendingCard({
-  item, accounts, selected, onToggle, onApprove, onEdit, onReject, onDelete,
+  item, accounts, onReview, onReject, onDelete,
 }: {
   item: PendingItem;
   accounts: Array<{ id: string; bankName: string; accountName: string; cardName?: string; last4: string }>;
-  selected: boolean;
-  onToggle: () => void;
-  onApprove: () => void;
-  onEdit: () => void;
+  onReview: () => void;
   onReject: () => void | Promise<void>;
   onDelete: () => void | Promise<void>;
 }) {
@@ -211,19 +162,15 @@ function PendingCard({
   const isPending = item.status === 'pending';
   const account = accounts.find((a) => a.id === item.draft.accountId);
   const noAmount = !item.draft.amount || item.draft.amount <= 0;
+  // Bank messages say what was charged, almost never what it was for.
+  const uncertainCategory =
+    item.draft.category === 'Other' ||
+    item.draft.category === 'Other Income' ||
+    item.extraction.category.confidence < 0.7;
 
   return (
-    <li className={cx('rounded-card border bg-plane p-3 transition-colors', selected ? 'border-accent' : 'border-line')}>
+    <li className="rounded-card border border-line bg-plane p-3">
       <div className="flex items-start gap-3">
-        {isPending && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onToggle}
-            aria-label="Select for bulk approval"
-            className="mt-1 h-4 w-4 shrink-0 accent-[rgb(var(--accent))]"
-          />
-        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className={cx('text-base font-bold tnum', noAmount ? 'text-critical' : 'text-ink')}>
@@ -240,6 +187,14 @@ function PendingCard({
             {item.draft.kind === 'income' && <Badge tone="good">Income</Badge>}
             {account && <Badge tone="neutral">{account.cardName || account.accountName} ····{account.last4}</Badge>}
             <span className="text-[11px] text-subtle">via {SOURCE_LABEL[item.source] ?? item.source}</span>
+          </div>
+
+          <div className="mt-1.5">
+            {uncertainCategory && (
+              <p className="text-[11px] font-medium text-warning">
+                The category is a guess — check it before approving.
+              </p>
+            )}
           </div>
 
           {item.status === 'approved' && <p className="mt-1.5 text-[11px] font-semibold text-good">Approved and posted to the ledger</p>}
@@ -263,15 +218,13 @@ function PendingCard({
 
       {isPending && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="primary" onClick={onApprove} disabled={noAmount}>
-            <IconCheck width={16} height={16} /> Approve
-          </Button>
-          <Button onClick={onEdit}>
-            <IconEdit width={15} height={15} /> Edit &amp; approve
+          <Button variant="primary" onClick={onReview}>
+            <IconEdit width={15} height={15} /> Review &amp; approve
           </Button>
           <Button variant="danger" onClick={() => void onReject()}>
             <IconX width={15} height={15} /> Reject
           </Button>
+          {noAmount && <span className="self-center text-[11px] text-critical">Needs an amount</span>}
         </div>
       )}
       {!isPending && (
@@ -307,6 +260,10 @@ function EditAndApprove({
     attachmentIds: item.attachmentIds,
   });
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
+  const weakCategory =
+    item.draft.category === 'Other' ||
+    item.draft.category === 'Other Income' ||
+    item.extraction.category.confidence < 0.7;
 
   const submit = () => {
     const found = validate(form);
@@ -331,7 +288,7 @@ function EditAndApprove({
     <Modal
       open
       onClose={onClose}
-      title="Review and approve"
+      title="Review & approve"
       wide
       footer={
         <>
@@ -345,6 +302,14 @@ function EditAndApprove({
       <div className="mb-4">
         <ExtractionPreview raw={item.rawText} result={item.extraction} />
       </div>
+
+      {weakCategory && (
+        <p className="mb-4 rounded-xl border border-warning/35 bg-warning/10 px-3 py-2.5 text-xs leading-relaxed text-ink">
+          <strong>Check the category.</strong> This message did not say what the money was spent on, so
+          "{item.draft.category}" is the app's best guess rather than something it read.
+        </p>
+      )}
+
       <TransactionForm value={form} onChange={setForm} errors={errors} />
     </Modal>
   );
