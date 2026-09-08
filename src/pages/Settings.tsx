@@ -4,6 +4,7 @@ import type { Route } from '@/components/Shell';
 import { useStore } from '@/store/AppStore';
 import { NAV } from '@/components/Shell';
 import { Badge, Button, Card, Modal, Toggle, cx } from '@/components/ui/Primitives';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconChevron, IconDownload, IconShield, IconTrash } from '@/components/Icons';
 import { migrate } from '@/store/reducer';
 import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
@@ -11,8 +12,10 @@ import { downloadBlob, monthKey, todayISO } from '@/lib/utils';
 
 export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const { state, dispatch, captureText, resetAll, toast } = useStore();
+  const confirm = useConfirm();
   const [confirmReset, setConfirmReset] = useState(false);
   const [thresholds, setThresholds] = useState(state.settings.alertThresholds.join(', '));
+  const [retention, setRetention] = useState(String(state.settings.retentionDays));
   const fileRef = useRef<HTMLInputElement>(null);
 
   const customCategories = state.categories.filter((c) => c.custom);
@@ -122,6 +125,55 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
         </p>
       </Card>
 
+      <Card title="Deleted items" subtitle="How long the recycle bin holds on to what you delete">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="label">Keep for (days)</span>
+            <input
+              className="input tnum max-w-[8rem]"
+              type="number"
+              min="1"
+              max="365"
+              value={retention}
+              onChange={(e) => setRetention(e.target.value)}
+            />
+          </label>
+          <Button
+            variant="primary"
+            onClick={() => {
+              const days = Number(retention);
+              if (!Number.isFinite(days) || days < 1 || days > 365) {
+                toast('Choose between 1 and 365 days', 'error');
+                return;
+              }
+              dispatch({ type: 'settings/update', settings: { retentionDays: Math.round(days) } });
+              toast(`Deleted items now kept for ${Math.round(days)} days`);
+            }}
+          >
+            Save
+          </Button>
+          <Button onClick={() => onNavigate('activity')}>Open the recycle bin</Button>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-line pt-3">
+          <div>
+            <p className="text-sm font-semibold">Ask before deleting</p>
+            <p className="text-xs text-muted">
+              Confirm rejections and deletions before they happen. Leaving this on is recommended.
+            </p>
+          </div>
+          <Toggle
+            checked={state.settings.confirmDestructive}
+            label="Ask before deleting"
+            onChange={(v) => dispatch({ type: 'settings/update', settings: { confirmDestructive: v } })}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          {state.recycleBin.length
+            ? `${state.recycleBin.length} item${state.recycleBin.length === 1 ? '' : 's'} currently in the recycle bin.`
+            : 'The recycle bin is empty.'}
+        </p>
+      </Card>
+
       <Card title="Categories" subtitle={`${state.categories.length} in use · ${customCategories.length} of your own`}>
         {customCategories.length ? (
           <ul className="flex flex-wrap gap-1.5">
@@ -132,7 +184,18 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
                   <button
                     type="button"
                     aria-label={`Remove ${c.name}`}
-                    onClick={() => {
+                    onClick={async () => {
+                      const used = state.transactions.filter((t) => t.category === c.name).length;
+                      const ok = await confirm({
+                        title: `Remove "${c.name}"?`,
+                        message: `The category will no longer be offered when you record a transaction.`,
+                        reassurance:
+                          used > 0
+                            ? `${used} existing transaction${used === 1 ? '' : 's'} keep this category and are not changed.`
+                            : 'No transactions use it.',
+                        confirmLabel: 'Remove category',
+                      });
+                      if (!ok) return;
                       dispatch({ type: 'category/remove', name: c.name });
                       toast(`Removed "${c.name}"`, 'info');
                     }}
@@ -186,6 +249,8 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
             ['Awaiting approval', state.pending.filter((p) => p.status === 'pending').length],
             ['Accounts', state.accounts.length],
             ['Goals', state.goals.length],
+            ['History entries', state.audit.length],
+            ['In recycle bin', state.recycleBin.length],
           ].map(([label, value]) => (
             <div key={String(label)} className="rounded-lg bg-plane px-2.5 py-2">
               <dt className="text-[10px] font-bold uppercase tracking-wide text-subtle">{label}</dt>

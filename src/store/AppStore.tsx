@@ -41,7 +41,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     loadState<AppState>().then((stored) => {
       if (cancelled) return;
-      if (stored) dispatch({ type: 'hydrate', state: migrate(stored) });
+      if (stored) {
+        dispatch({ type: 'hydrate', state: migrate(stored) });
+        // Anything past its retention window goes now, not whenever the user
+        // next happens to open the recycle bin.
+        dispatch({ type: 'recycle/purgeExpired' });
+      }
       hydrated.current = true;
       setReady(true);
     });

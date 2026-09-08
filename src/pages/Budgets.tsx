@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Budget, BudgetPeriod } from '@/types';
 import { useStore } from '@/store/AppStore';
 import { Badge, Button, Card, EmptyState, Modal, Progress, Segmented, Select, cx } from '@/components/ui/Primitives';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconAlert, IconBudget, IconPlus, IconTrash } from '@/components/Icons';
 import { budgetAlerts, evaluateAll } from '@/engine/budget';
 import { byCategory } from '@/engine/analytics';
@@ -9,6 +10,7 @@ import { formatINR, monthKey, todayISO, uid } from '@/lib/utils';
 
 export function Budgets() {
   const { state, dispatch, toast } = useStore();
+  const confirm = useConfirm();
   const today = todayISO();
   const [period, setPeriod] = useState<BudgetPeriod>('monthly');
   const [adding, setAdding] = useState(false);
@@ -117,7 +119,19 @@ export function Budgets() {
                   <button
                     type="button"
                     aria-label={`Delete ${s.budget.category} budget`}
-                    onClick={() => {
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Remove this budget?',
+                        message: (
+                          <>
+                            The {formatINR(s.allocated)} {s.budget.period} budget for{' '}
+                            <strong>{s.budget.category}</strong> will no longer be tracked or alert you.
+                          </>
+                        ),
+                        reassurance: 'Your transactions are not affected.',
+                        confirmLabel: 'Remove budget',
+                      });
+                      if (!ok) return;
                       dispatch({ type: 'budget/remove', id: s.budget.id });
                       toast('Budget removed', 'info');
                     }}

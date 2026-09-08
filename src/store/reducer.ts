@@ -1,7 +1,8 @@
 import type {
-  Account, AppState, Budget, CategoryDef, Goal, GoalContribution, PendingDraft, PendingItem,
-  RecurringRule, Settings, Transaction,
+  Account, AppState, Budget, CategoryDef, DeletedItem, Goal, GoalContribution, PendingDraft,
+  PendingItem, RecurringRule, Settings, Transaction,
 } from '@/types';
+import { describeAction } from './audit';
 import { DEFAULT_CATEGORIES } from '@/data/categories';
 import { round2, todayISO, uid } from '@/lib/utils';
 
@@ -14,6 +15,8 @@ export const DEFAULT_SETTINGS: Settings = {
   monthStartDay: 1,
   alertThresholds: [80, 90, 100],
   emergencyFundMonths: 6,
+  retentionDays: 30,
+  confirmDestructive: true,
   autoApproveThreshold: null,
   onboarded: false,
 };
@@ -28,8 +31,32 @@ export function emptyState(): AppState {
     goals: [],
     recurring: [],
     categories: DEFAULT_CATEGORIES,
+    audit: [],
+    recycleBin: [],
     settings: DEFAULT_SETTINGS,
   };
+}
+
+/** Newest first, and bounded so a long-lived install cannot grow without limit. */
+const AUDIT_LIMIT = 2000;
+
+function binEntry(state: AppState, kind: DeletedItem['kind'], payload: Partial<DeletedItem>): DeletedItem {
+  const now = new Date();
+  const expires = new Date(now);
+  expires.setDate(expires.getDate() + Math.max(1, state.settings.retentionDays));
+  return {
+    id: uid('del'),
+    kind,
+    deletedAt: now.toISOString(),
+    expiresAt: expires.toISOString(),
+    ...payload,
+  };
+}
+
+/** Drops recycle-bin items whose retention window has passed. */
+export function purgeExpired(state: AppState, now = new Date()): AppState {
+  const kept = state.recycleBin.filter((d) => d.expiresAt > now.toISOString());
+  return kept.length === state.recycleBin.length ? state : { ...state, recycleBin: kept };
 }
 
 export type Action =
@@ -50,6 +77,9 @@ export type Action =
   | { type: 'pending/reject'; id: string; reason?: string }
   | { type: 'pending/remove'; id: string }
   | { type: 'pending/clearReviewed' }
+  | { type: 'recycle/restore'; id: string }
+  | { type: 'recycle/purge'; id: string }
+  | { type: 'recycle/purgeExpired' }
   | { type: 'budget/upsert'; budget: Budget }
   | { type: 'budget/remove'; id: string }
   | { type: 'goal/add'; goal: Goal }
@@ -87,7 +117,7 @@ export function transactionFromDraft(item: PendingItem, draft: PendingDraft): Tr
   };
 }
 
-export function reducer(state: AppState, action: Action): AppState {
+function baseReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'hydrate':
     case 'replaceAll':
@@ -129,8 +159,15 @@ export function reducer(state: AppState, action: Action): AppState {
         ),
       };
 
-    case 'txn/remove':
-      return { ...state, transactions: state.transactions.filter((t) => t.id !== action.id) };
+    case 'txn/remove': {
+      const removed = state.transactions.find((t) => t.id === action.id);
+      if (!removed) return state;
+      return {
+        ...state,
+        transactions: state.transactions.filter((t) => t.id !== action.id),
+        recycleBin: [binEntry(state, 'transaction', { transaction: removed }), ...state.recycleBin],
+      };
+    }
 
     case 'pending/add':
       return { ...state, pending: [...action.items, ...state.pending] };
@@ -184,11 +221,55 @@ export function reducer(state: AppState, action: Action): AppState {
         ),
       };
 
-    case 'pending/remove':
-      return { ...state, pending: state.pending.filter((p) => p.id !== action.id) };
+    case 'pending/remove': {
+      const removed = state.pending.find((p) => p.id === action.id);
+      if (!removed) return state;
+      return {
+        ...state,
+        pending: state.pending.filter((p) => p.id !== action.id),
+        recycleBin: [binEntry(state, 'pending', { pending: removed }), ...state.recycleBin],
+      };
+    }
 
-    case 'pending/clearReviewed':
-      return { ...state, pending: state.pending.filter((p) => p.status === 'pending') };
+    case 'pending/clearReviewed': {
+      const cleared = state.pending.filter((p) => p.status !== 'pending');
+      if (!cleared.length) return state;
+      return {
+        ...state,
+        pending: state.pending.filter((p) => p.status === 'pending'),
+        recycleBin: [...cleared.map((p) => binEntry(state, 'pending', { pending: p })), ...state.recycleBin],
+      };
+    }
+
+    case 'recycle/restore': {
+      const item = state.recycleBin.find((d) => d.id === action.id);
+      if (!item) return state;
+      const rest = state.recycleBin.filter((d) => d.id !== action.id);
+      if (item.transaction) {
+        // Guard against restoring something that was recreated in the meantime.
+        const exists = state.transactions.some((t) => t.id === item.transaction!.id);
+        return {
+          ...state,
+          transactions: exists ? state.transactions : [item.transaction, ...state.transactions],
+          recycleBin: rest,
+        };
+      }
+      if (item.pending) {
+        const exists = state.pending.some((p) => p.id === item.pending!.id);
+        return {
+          ...state,
+          pending: exists ? state.pending : [item.pending, ...state.pending],
+          recycleBin: rest,
+        };
+      }
+      return { ...state, recycleBin: rest };
+    }
+
+    case 'recycle/purge':
+      return { ...state, recycleBin: state.recycleBin.filter((d) => d.id !== action.id) };
+
+    case 'recycle/purgeExpired':
+      return purgeExpired(state);
 
     case 'budget/upsert': {
       const exists = state.budgets.some(
@@ -271,6 +352,23 @@ export function reducer(state: AppState, action: Action): AppState {
   }
 }
 
+/**
+ * The exported reducer. Every action runs through the plain reducer first, then
+ * the change is described into the audit log — so the history is a property of
+ * the store rather than something each screen has to remember to write.
+ */
+export function reducer(state: AppState, action: Action): AppState {
+  const next = baseReducer(state, action);
+  if (next === state) return state;
+  // Hydration and restore-from-backup replace the log wholesale; they are not
+  // themselves events within it.
+  if (action.type === 'hydrate') return next;
+
+  const record = describeAction(action as unknown as { type: string }, state, next);
+  if (!record) return next;
+  return { ...next, audit: [record, ...next.audit].slice(0, AUDIT_LIMIT) };
+}
+
 /** Fills in anything a stored state is missing after an upgrade. */
 export function migrate(raw: unknown): AppState {
   const base = emptyState();
@@ -286,6 +384,8 @@ export function migrate(raw: unknown): AppState {
     settings: { ...base.settings, ...(stored.settings ?? {}) },
     transactions: (stored.transactions ?? []).map((t) => ({ ...t, tags: t.tags ?? [], attachmentIds: t.attachmentIds ?? [] })),
     pending: (stored.pending ?? []).map((p) => ({ ...p, attachmentIds: p.attachmentIds ?? [] })),
+    audit: stored.audit ?? [],
+    recycleBin: stored.recycleBin ?? [],
   };
 }
 

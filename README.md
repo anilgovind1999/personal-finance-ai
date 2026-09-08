@@ -80,6 +80,14 @@ saving potential and budget overrun risk, all derived from your own history.
 **Goals** — emergency fund, vehicle, home, vacation, education, retirement and
 custom goals, with target, current savings, progress % and projected completion.
 
+**Safety net** — every destructive action asks first and says exactly what will
+happen. Deletions are soft: transactions and captured messages go to a **recycle
+bin** for a configurable retention window (30 days by default), can be restored
+in one click, and are purged automatically once expired. An **append-only audit
+trail** records every consequential change — created, edited, approved, rejected,
+deleted, restored, budgets set, goals changed — with field-level before/after
+values on edits, including what you overrode when the AI got something wrong.
+
 **Reports** — monthly, annual, income, savings, cash flow, category, merchant,
 credit card and budget reports, exportable to **Excel, PDF and CSV**, plus a
 raw full-ledger CSV export.
@@ -98,7 +106,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 104 unit tests
+npm test         # 140 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -156,11 +164,11 @@ src/
     insights    the financial-intelligence generators
     health      the weighted 0-100 financial health score
     search      natural-language question answering
-  store/        reducer (approval rules live here), persistence, demo data
+  store/        reducer (approval rules live here), audit log, persistence, demo data
   db/           IndexedDB wrapper — app state plus receipt blobs
   components/   design system, charts, shell, shared transaction form
   pages/        dashboard, capture, approvals, transactions, analytics,
-                budgets, goals, accounts, reports, settings
+                budgets, goals, accounts, reports, activity, settings
   export/       CSV / Excel / PDF report builders
 ```
 

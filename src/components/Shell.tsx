@@ -3,12 +3,12 @@ import { useStore } from '@/store/AppStore';
 import { cx } from '@/components/ui/Primitives';
 import {
   IconBudget, IconChart, IconDashboard, IconInbox, IconLedger, IconMoon, IconPlus,
-  IconReport, IconSettings, IconSparkles, IconSun, IconTarget, IconWallet,
+  IconReport, IconSettings, IconShield, IconSparkles, IconSun, IconTarget, IconWallet,
 } from '@/components/Icons';
 
 export type Route =
   | 'dashboard' | 'transactions' | 'capture' | 'approvals' | 'analytics'
-  | 'budgets' | 'goals' | 'accounts' | 'reports' | 'settings';
+  | 'budgets' | 'goals' | 'accounts' | 'reports' | 'activity' | 'settings';
 
 interface NavItem {
   route: Route;
@@ -28,6 +28,7 @@ export const NAV: NavItem[] = [
   { route: 'goals', label: 'Goals', icon: IconTarget },
   { route: 'accounts', label: 'Accounts', icon: IconWallet },
   { route: 'reports', label: 'Reports', icon: IconReport },
+  { route: 'activity', label: 'Activity', icon: IconShield },
   { route: 'settings', label: 'Settings', icon: IconSettings },
 ];
 
@@ -116,7 +117,7 @@ export function Shell({
             ))}
             <TabButton
               item={{ route: 'settings', label: 'More', icon: IconSettings }}
-              active={['settings', 'analytics', 'budgets', 'goals', 'accounts', 'reports'].includes(route)}
+              active={['settings', 'analytics', 'budgets', 'goals', 'accounts', 'reports', 'activity'].includes(route)}
               badge={0}
               onClick={() => onNavigate('settings')}
             />

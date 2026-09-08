@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { PendingItem } from '@/types';
 import { useStore } from '@/store/AppStore';
 import { Badge, Button, Card, EmptyState, Modal, Segmented, cx } from '@/components/ui/Primitives';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { TransactionForm, type TxnFormValue, validate } from '@/components/TransactionForm';
 import { ExtractionPreview } from '@/pages/Capture';
 import { IconCheck, IconEdit, IconInbox, IconShield, IconTrash, IconX } from '@/components/Icons';
@@ -19,6 +20,7 @@ const SOURCE_LABEL: Record<string, string> = {
  */
 export function Approvals() {
   const { state, dispatch, toast } = useStore();
+  const confirm = useConfirm();
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [editing, setEditing] = useState<PendingItem | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -119,11 +121,35 @@ export function Approvals() {
                 onToggle={() => toggle(item.id)}
                 onApprove={() => approve(item)}
                 onEdit={() => setEditing(item)}
-                onReject={() => {
+                onReject={async () => {
+                  const ok = await confirm({
+                    title: 'Reject this transaction?',
+                    message: (
+                      <>
+                        <strong>
+                          {item.draft.amount ? formatINR(item.draft.amount) : 'This item'} at {item.draft.merchant}
+                        </strong>{' '}
+                        will not be added to your ledger.
+                      </>
+                    ),
+                    reassurance: `It moves to the Rejected tab, and stays recoverable in the recycle bin for ${state.settings.retentionDays} days if you remove it from there.`,
+                    confirmLabel: 'Reject',
+                  });
+                  if (!ok) return;
                   dispatch({ type: 'pending/reject', id: item.id });
                   toast('Rejected — nothing was posted', 'info');
                 }}
-                onDelete={() => dispatch({ type: 'pending/remove', id: item.id })}
+                onDelete={async () => {
+                  const ok = await confirm({
+                    title: 'Remove from history?',
+                    message: 'This captured message will no longer appear in your review history.',
+                    reassurance: `It goes to the recycle bin and can be restored for ${state.settings.retentionDays} days.`,
+                    confirmLabel: 'Remove',
+                  });
+                  if (!ok) return;
+                  dispatch({ type: 'pending/remove', id: item.id });
+                  toast('Moved to the recycle bin', 'info');
+                }}
               />
             ))}
           </ul>
@@ -131,7 +157,21 @@ export function Approvals() {
 
         {filter !== 'pending' && items.length > 0 && (
           <div className="mt-4 border-t border-line pt-3">
-            <Button variant="quiet" onClick={() => dispatch({ type: 'pending/clearReviewed' })}>
+            <Button
+              variant="quiet"
+              onClick={async () => {
+                const reviewed = state.pending.filter((p) => p.status !== 'pending').length;
+                const ok = await confirm({
+                  title: 'Clear reviewed history?',
+                  message: `${reviewed} approved and rejected capture${reviewed === 1 ? '' : 's'} will be cleared from this list.`,
+                  reassurance: `Approved transactions stay in your ledger. The cleared records go to the recycle bin for ${state.settings.retentionDays} days.`,
+                  confirmLabel: 'Clear history',
+                });
+                if (!ok) return;
+                dispatch({ type: 'pending/clearReviewed' });
+                toast('Reviewed history cleared', 'info');
+              }}
+            >
               <IconTrash width={15} height={15} /> Clear reviewed history
             </Button>
           </div>
@@ -162,8 +202,8 @@ function PendingCard({
   onToggle: () => void;
   onApprove: () => void;
   onEdit: () => void;
-  onReject: () => void;
-  onDelete: () => void;
+  onReject: () => void | Promise<void>;
+  onDelete: () => void | Promise<void>;
 }) {
   const [showDetail, setShowDetail] = useState(false);
   const band = confidenceBand(item.extraction.confidence);
@@ -229,14 +269,14 @@ function PendingCard({
           <Button onClick={onEdit}>
             <IconEdit width={15} height={15} /> Edit &amp; approve
           </Button>
-          <Button variant="danger" onClick={onReject}>
+          <Button variant="danger" onClick={() => void onReject()}>
             <IconX width={15} height={15} /> Reject
           </Button>
         </div>
       )}
       {!isPending && (
         <div className="mt-3">
-          <Button variant="quiet" onClick={onDelete}>
+          <Button variant="quiet" onClick={() => void onDelete()}>
             <IconTrash width={14} height={14} /> Remove from history
           </Button>
         </div>

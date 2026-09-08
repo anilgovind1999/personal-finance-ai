@@ -3,12 +3,14 @@ import type { Account, AccountType } from '@/types';
 import { ACCOUNT_TYPES } from '@/data/categories';
 import { useStore } from '@/store/AppStore';
 import { Badge, Button, Card, EmptyState, Modal, Progress, Select, cx } from '@/components/ui/Primitives';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconPlus, IconShield, IconTrash, IconWallet } from '@/components/Icons';
 import { accountBalances } from '@/engine/analytics';
 import { formatINR, todayISO, uid } from '@/lib/utils';
 
 export function Accounts() {
   const { state, dispatch, toast } = useStore();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<Account | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -83,7 +85,23 @@ export function Accounts() {
                     <Button onClick={() => setEditing(account)}>Edit</Button>
                     <Button
                       variant="quiet"
-                      onClick={() => {
+                      onClick={async () => {
+                        const linked = state.transactions.filter((t) => t.accountId === account.id).length;
+                        const ok = await confirm({
+                          title: 'Remove this account?',
+                          message: (
+                            <>
+                              <strong>{account.cardName || account.accountName} ····{account.last4}</strong> will be
+                              removed from your account list.
+                            </>
+                          ),
+                          reassurance:
+                            linked > 0
+                              ? `${linked} transaction${linked === 1 ? '' : 's'} linked to it are kept — they simply stop being attached to an account.`
+                              : 'No transactions are linked to it.',
+                          confirmLabel: 'Remove account',
+                        });
+                        if (!ok) return;
                         dispatch({ type: 'account/remove', id: account.id });
                         toast('Account removed — its transactions were kept', 'info');
                       }}

@@ -7,6 +7,7 @@ import {
   TransactionForm, emptyForm, formFromTransaction, toTransaction, validate, type TxnFormValue,
 } from '@/components/TransactionForm';
 import { IconEdit, IconFilter, IconLedger, IconSearch, IconTrash, IconX } from '@/components/Icons';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { applyFilters, smartSearch, SEARCH_EXAMPLES, type SearchAnswer } from '@/engine/search';
 import { expensesOf, incomeOf, totalOf } from '@/engine/analytics';
 import { formatINR, fromISODate, monthKey, todayISO } from '@/lib/utils';
@@ -25,6 +26,7 @@ const EMPTY_FILTERS: Filters = { from: '', to: '', kind: '', category: '', payme
 
 export function Transactions({ initialEdit }: { initialEdit?: Transaction | null }) {
   const { state, dispatch, toast } = useStore();
+  const confirm = useConfirm();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(initialEdit ?? null);
@@ -214,9 +216,21 @@ export function Transactions({ initialEdit }: { initialEdit?: Transaction | null
             toast('Transaction updated');
             setEditing(null);
           }}
-          onDelete={() => {
+          onDelete={async () => {
+            const ok = await confirm({
+              title: 'Delete this transaction?',
+              message: (
+                <>
+                  <strong>{formatINR(editing.amount)} at {editing.merchant}</strong> will be removed from
+                  your ledger, and from every dashboard, budget and report that counts it.
+                </>
+              ),
+              reassurance: `It goes to the recycle bin and can be restored for ${state.settings.retentionDays} days.`,
+              confirmLabel: 'Delete',
+            });
+            if (!ok) return;
             dispatch({ type: 'txn/remove', id: editing.id });
-            toast('Transaction deleted', 'info');
+            toast('Moved to the recycle bin', 'info');
             setEditing(null);
           }}
         />
@@ -318,7 +332,7 @@ function EditTransaction({
   txn: Transaction;
   onClose: () => void;
   onSave: (t: Transaction) => void;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
 }) {
   const [form, setForm] = useState<TxnFormValue>(() => formFromTransaction(txn));
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
@@ -331,7 +345,7 @@ function EditTransaction({
       wide
       footer={
         <>
-          <Button variant="danger" onClick={onDelete} className="mr-auto">
+          <Button variant="danger" onClick={() => void onDelete()} className="mr-auto">
             <IconTrash width={15} height={15} /> Delete
           </Button>
           <Button variant="quiet" onClick={onClose}>Cancel</Button>

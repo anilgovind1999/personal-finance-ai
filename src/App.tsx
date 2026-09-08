@@ -11,10 +11,12 @@ import { Goals } from '@/pages/Goals';
 import { Accounts } from '@/pages/Accounts';
 import { Reports } from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
+import { Activity } from '@/pages/Activity';
+import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 
 const ROUTES: Route[] = [
   'dashboard', 'transactions', 'capture', 'approvals', 'analytics',
-  'budgets', 'goals', 'accounts', 'reports', 'settings',
+  'budgets', 'goals', 'accounts', 'reports', 'activity', 'settings',
 ];
 
 function routeFromHash(): Route {
@@ -68,6 +70,7 @@ function Router() {
       {route === 'goals' && <Goals />}
       {route === 'accounts' && <Accounts />}
       {route === 'reports' && <Reports />}
+      {route === 'activity' && <Activity />}
       {route === 'settings' && <Settings onNavigate={navigate} />}
       <QuickAdd open={quickAdd} onClose={() => setQuickAdd(false)} />
     </Shell>
@@ -77,7 +80,9 @@ function Router() {
 export default function App() {
   return (
     <AppStoreProvider>
-      <Router />
+      <ConfirmProvider>
+        <Router />
+      </ConfirmProvider>
     </AppStoreProvider>
   );
 }

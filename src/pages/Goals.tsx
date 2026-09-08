@@ -3,6 +3,7 @@ import type { Goal } from '@/types';
 import { GOAL_TYPES } from '@/data/categories';
 import { useStore } from '@/store/AppStore';
 import { Badge, Button, Card, EmptyState, Modal, Progress, Select, cx } from '@/components/ui/Primitives';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconPlus, IconTarget, IconTrash } from '@/components/Icons';
 import { projectGoal } from '@/engine/forecast';
 import { monthRange, summarise } from '@/engine/analytics';
@@ -10,6 +11,7 @@ import { formatINR, monthKey, todayISO, uid } from '@/lib/utils';
 
 export function Goals() {
   const { state, dispatch, toast } = useStore();
+  const confirm = useConfirm();
   const today = todayISO();
   const [adding, setAdding] = useState(false);
   const [contributing, setContributing] = useState<Goal | null>(null);
@@ -89,7 +91,19 @@ export function Goals() {
                   <Button onClick={() => setContributing(p.goal)}>Add contribution</Button>
                   <Button
                     variant="quiet"
-                    onClick={() => {
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `Delete "${p.goal.name}"?`,
+                        message: (
+                          <>
+                            The goal and its {p.goal.contributions.length} recorded contribution
+                            {p.goal.contributions.length === 1 ? '' : 's'} will be deleted.
+                          </>
+                        ),
+                        reassurance: 'Your transactions are not affected. This cannot be undone.',
+                        confirmLabel: 'Delete goal',
+                      });
+                      if (!ok) return;
                       dispatch({ type: 'goal/remove', id: p.goal.id });
                       toast('Goal removed', 'info');
                     }}

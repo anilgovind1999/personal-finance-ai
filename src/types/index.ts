@@ -187,6 +187,45 @@ export interface CategoryDef {
   kind: TxnKind;
 }
 
+/** Every consequential change is recorded, so the ledger can always be explained. */
+export type AuditAction =
+  | 'txn.create' | 'txn.update' | 'txn.delete' | 'txn.restore' | 'txn.purge'
+  | 'pending.capture' | 'pending.approve' | 'pending.reject' | 'pending.delete' | 'pending.restore'
+  | 'pending.edit' | 'pending.clearReviewed'
+  | 'account.create' | 'account.update' | 'account.delete'
+  | 'budget.set' | 'budget.delete'
+  | 'goal.create' | 'goal.update' | 'goal.delete' | 'goal.contribute'
+  | 'recurring.set' | 'recurring.delete'
+  | 'category.add' | 'category.addSub' | 'category.remove'
+  | 'settings.update' | 'data.import' | 'data.reset' | 'recycle.purgeExpired';
+
+export interface AuditEntry {
+  id: string;
+  at: ISODateTime;
+  action: AuditAction;
+  /** Id of the thing that changed, where there is one. */
+  entityId?: string;
+  /** One line, written for a person reading their own history. */
+  summary: string;
+  /** Field-level changes, for edits. */
+  changes?: Array<{ field: string; from: string; to: string }>;
+  amount?: number;
+  /** True while the change can still be undone from the recycle bin. */
+  recoverable?: boolean;
+}
+
+/** A soft-deleted record, held for the retention window before it is really gone. */
+export interface DeletedItem {
+  id: string;
+  kind: 'transaction' | 'pending';
+  deletedAt: ISODateTime;
+  /** After this instant the item is purged automatically. */
+  expiresAt: ISODateTime;
+  reason?: string;
+  transaction?: Transaction;
+  pending?: PendingItem;
+}
+
 export interface Settings {
   theme: 'light' | 'dark';
   currency: string;
@@ -196,6 +235,10 @@ export interface Settings {
   alertThresholds: number[];
   /** Emergency-fund target expressed as months of average expense. */
   emergencyFundMonths: number;
+  /** Days a deleted record stays recoverable in the recycle bin. */
+  retentionDays: number;
+  /** Ask before anything destructive. Off only if the user turns it off. */
+  confirmDestructive: boolean;
   autoApproveThreshold: number | null; // reserved; approval stays mandatory
   onboarded: boolean;
 }
@@ -209,5 +252,9 @@ export interface AppState {
   goals: Goal[];
   recurring: RecurringRule[];
   categories: CategoryDef[];
+  /** Append-only history of every consequential change, newest first. */
+  audit: AuditEntry[];
+  /** Soft-deleted records awaiting restore or automatic purge. */
+  recycleBin: DeletedItem[];
   settings: Settings;
 }
