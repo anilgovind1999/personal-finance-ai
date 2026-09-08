@@ -104,6 +104,10 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
       return entry('txn.purge', `Permanently deleted ${what}`, { entityId: item.id });
     }
 
+    case 'data/clearSample': {
+      return entry('data.reset', 'Cleared the sample data — your own settings were kept');
+    }
+
     case 'recycle/purgeExpired': {
       const removed = before.recycleBin.length - after.recycleBin.length;
       if (removed <= 0) return null;

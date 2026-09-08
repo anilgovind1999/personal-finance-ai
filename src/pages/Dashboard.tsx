@@ -16,10 +16,14 @@ import { forecastMonthEnd } from '@/engine/forecast';
 import { generateInsights, type InsightSeverity } from '@/engine/insights';
 import { financialHealth } from '@/engine/health';
 import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
+import { isOwner } from '@/sync/admin';
 import { addMonthsToKey, formatMoney, formatShortMoney, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
-  const { state, dispatch, captureText, toast } = useStore();
+  const { state, dispatch, captureText, cloud, toast } = useStore();
+  // Nine months of invented history helps whoever is demonstrating the app and
+  // nobody who is tracking real money, so it is offered only to its owner.
+  const owner = isOwner(cloud.account, cloud.configured);
   const today = todayISO();
   const month = monthKey(today);
   const pendingCount = state.pending.filter((p) => p.status === 'pending').length;
@@ -77,9 +81,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
             action={
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="primary" onClick={() => onNavigate('capture')}>
-                  <IconSparkles width={16} height={16} /> Try AI capture
+                  <IconSparkles width={16} height={16} /> Paste a bank message
                 </Button>
-                <Button onClick={loadDemo}>Load sample data</Button>
+                <Button onClick={() => dispatch({ type: 'settings/update', settings: { onboarded: false } })}>
+                  Take the tour
+                </Button>
+                {owner && <Button onClick={loadDemo}>Load sample data</Button>}
               </div>
             }
           />
@@ -107,6 +114,24 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
 
   return (
     <div className="space-y-4">
+      {state.settings.demoLoadedAt && (
+        <div className="flex flex-wrap items-center gap-3 rounded-card border border-warning/40 bg-warning/10 px-4 py-3">
+          <IconInfo width={18} height={18} className="shrink-0 text-warning" />
+          <p className="min-w-0 flex-1 text-sm text-ink">
+            <span className="font-semibold">This is sample data.</span>{' '}
+            <span className="text-muted">Invented figures for trying the app out — none of it is yours.</span>
+          </p>
+          <Button
+            onClick={() => {
+              dispatch({ type: 'data/clearSample' });
+              toast('Sample data cleared — the ledger is empty and ready for your own entries');
+            }}
+          >
+            Clear it
+          </Button>
+        </div>
+      )}
+
       {pendingCount > 0 && (
         <button
           type="button"

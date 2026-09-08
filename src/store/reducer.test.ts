@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AppState, ExtractionResult, PendingItem } from '@/types';
 import { draftFromExtraction, emptyState, migrate, reducer } from './reducer';
 import { parseMessage } from '@/engine/parser';
+import { buildDemoState } from './demoData';
 
 function pendingFrom(text: string, state: AppState): PendingItem {
   const extraction: ExtractionResult = parseMessage(text, { now: new Date(2026, 2, 14) });
@@ -169,5 +170,39 @@ describe('state management', () => {
   it('migrates junk into a usable empty state', () => {
     expect(migrate(null).transactions).toEqual([]);
     expect(migrate('nonsense').categories.length).toBeGreaterThan(20);
+  });
+});
+
+describe('sample data and first-run', () => {
+  it('a fresh ledger has not been onboarded, so the tutorial runs once', () => {
+    expect(emptyState().settings.onboarded).toBe(false);
+  });
+
+  it('clearing the sample data empties the ledger', () => {
+    const demo = buildDemoState('2026-03-14');
+    expect(demo.transactions.length).toBeGreaterThan(0);
+    const cleared = reducer(demo, { type: 'data/clearSample' });
+    expect(cleared.transactions).toHaveLength(0);
+    expect(cleared.pending).toHaveLength(0);
+    expect(cleared.settings.demoLoadedAt).toBeUndefined();
+  });
+
+  it('keeps the choices the person made for themselves', () => {
+    const demo = buildDemoState('2026-03-14');
+    const tuned = reducer(demo, {
+      type: 'settings/update',
+      settings: { theme: 'light', currency: 'GBP', retentionDays: 15 },
+    });
+    const cleared = reducer(tuned, { type: 'data/clearSample' });
+
+    expect(cleared.settings.theme).toBe('light');
+    expect(cleared.settings.currency).toBe('GBP');
+    expect(cleared.settings.retentionDays).toBe(15);
+    // And does not make them sit through the tutorial again.
+    expect(cleared.settings.onboarded).toBe(true);
+  });
+
+  it('marks a demo ledger as sample data so it can be labelled', () => {
+    expect(buildDemoState('2026-03-14').settings.demoLoadedAt).toBeTruthy();
   });
 });

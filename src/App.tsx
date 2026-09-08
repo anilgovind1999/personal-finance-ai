@@ -18,6 +18,7 @@ import { AccessGate } from '@/pages/AccessGate';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { track } from '@/sync/analytics';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
+import { Tour } from '@/components/Tour';
 
 const ROUTES: Route[] = [
   'dashboard', 'transactions', 'capture', 'approvals', 'analytics',
@@ -30,7 +31,7 @@ function routeFromHash(): Route {
 }
 
 function Router() {
-  const { ready, cloud } = useStore();
+  const { ready, state, dispatch, cloud } = useStore();
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [quickAdd, setQuickAdd] = useState(false);
 
@@ -104,6 +105,12 @@ function Router() {
       {route === 'activity' && <Activity />}
       {route === 'settings' && <Settings onNavigate={navigate} />}
       <QuickAdd open={quickAdd} onClose={() => setQuickAdd(false)} />
+      {/* Shown once, before the empty dashboard, and replayable from Settings. */}
+      <Tour
+        open={!state.settings.onboarded}
+        onClose={() => dispatch({ type: 'settings/update', settings: { onboarded: true } })}
+        onNavigate={navigate}
+      />
       <InstallPrompt />
       <UpdatePrompt />
     </Shell>

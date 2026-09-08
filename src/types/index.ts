@@ -308,7 +308,10 @@ export interface Settings {
   /** Ask before anything destructive. Off only if the user turns it off. */
   confirmDestructive: boolean;
   autoApproveThreshold: number | null; // reserved; approval stays mandatory
+  /** False until the first-run tutorial has been seen or skipped. */
   onboarded: boolean;
+  /** Set while the ledger holds sample data, so it can be labelled and cleared. */
+  demoLoadedAt?: ISODateTime;
 }
 
 export interface AppState {

@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string;
   readonly VITE_FIREBASE_APP_ID?: string;
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
+  /** The owner's email. Hides sample-data tools from everyone else; not a security control. */
+  readonly VITE_ADMIN_EMAIL?: string;
   readonly VITE_SINGLE_FILE?: string;
 }
 

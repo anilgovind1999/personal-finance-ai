@@ -222,7 +222,8 @@ export function buildDemoState(today = todayISO()): AppState {
     transactions: txns.sort((a, b) => b.date.localeCompare(a.date)),
     budgets,
     goals,
-    settings: { ...base.settings, onboarded: true },
+    // Flagged as sample data, so the app can label it and offer to clear it.
+    settings: { ...base.settings, onboarded: true, demoLoadedAt: new Date().toISOString() },
   };
 }
 

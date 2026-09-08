@@ -11,11 +11,13 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { IconChevron, IconDownload, IconShield, IconTrash } from '@/components/Icons';
 import { migrate } from '@/store/reducer';
 import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
+import { isOwner } from '@/sync/admin';
 import { downloadBlob, monthKey, todayISO } from '@/lib/utils';
 
 export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const { state, dispatch, captureText, resetAll, cloud, toast } = useStore();
   const confirm = useConfirm();
+  const owner = isOwner(cloud.account, cloud.configured);
   const [confirmReset, setConfirmReset] = useState(false);
   const [thresholds, setThresholds] = useState(state.settings.alertThresholds.join(', '));
   const [retention, setRetention] = useState(String(state.settings.retentionDays));
@@ -399,7 +401,19 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
               onChange={(e) => e.target.files?.[0] && void importBackup(e.target.files[0])}
             />
           </label>
-          <Button onClick={loadDemo}>Load sample data</Button>
+          {owner &&
+            (state.settings.demoLoadedAt ? (
+              <Button
+                onClick={() => {
+                  dispatch({ type: 'data/clearSample' });
+                  toast('Sample data cleared — your settings were kept');
+                }}
+              >
+                Clear sample data
+              </Button>
+            ) : (
+              <Button onClick={loadDemo}>Load sample data</Button>
+            ))}
           <Button variant="danger" onClick={() => setConfirmReset(true)}>
             <IconTrash width={16} height={16} /> Erase everything
           </Button>
@@ -430,6 +444,11 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
           result to a mandatory approval queue. Only what you approve reaches the ledger, dashboard,
           budgets, forecasts and reports.
         </p>
+        <div className="mt-4 border-t border-line pt-3">
+          <Button onClick={() => dispatch({ type: 'settings/update', settings: { onboarded: false } })}>
+            Show the tutorial again
+          </Button>
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/12 text-xs font-bold text-accent">
             G

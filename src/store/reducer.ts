@@ -67,6 +67,7 @@ export type Action =
   | { type: 'hydrate'; state: AppState }
   | { type: 'reset' }
   | { type: 'replaceAll'; state: AppState }
+  | { type: 'data/clearSample' }
   | { type: 'account/add'; account: Account }
   | { type: 'account/update'; account: Account }
   | { type: 'account/remove'; id: string }
@@ -167,6 +168,15 @@ function baseReducer(state: AppState, action: Action): AppState {
 
     case 'reset':
       return emptyState();
+
+    case 'data/clearSample': {
+      // Removes the invented ledger without touching what the person chose for
+      // themselves — theme, currency, alert thresholds — or making them sit
+      // through the tutorial a second time.
+      const fresh = emptyState();
+      const { demoLoadedAt: _demo, ...keep } = state.settings;
+      return { ...fresh, settings: { ...keep, onboarded: state.settings.onboarded } };
+    }
 
     case 'account/add':
       return { ...state, accounts: [...state.accounts, action.account] };

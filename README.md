@@ -134,7 +134,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 222 unit tests
+npm test         # 226 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -189,6 +189,9 @@ reconnects.
 7. On Netlify or Vercel, add the same `VITE_FIREBASE_*` values as environment
    variables, and add your deployed domain under **Authentication → Settings →
    Authorised domains**.
+8. Optionally set `VITE_ADMIN_EMAIL` to your own address. Sample-data tools are
+   then hidden from everyone else, so a real user is not offered nine months of
+   invented history.
 
 **Who can sign up.** Anyone with the URL can create an account with their own
 email and password. There is no invite list and nothing for you to approve.
@@ -330,6 +333,29 @@ order and never cycled — beyond eight series everything folds into a neutral
 "Other". Charts always carry a legend and direct labels, so identity is never
 carried by colour alone. Status colours are paired with an icon and a label.
 
+### First run
+
+A new user is shown a six-card tutorial before anything else: what the app is,
+how to paste a bank message, the receipt scanner, why nothing counts until they
+approve it, what the analytics give them, and how mistakes are recovered. It is
+skippable at any point, never appears again on its own, and can be replayed from
+**Settings → Show the tutorial again**.
+
+The empty dashboard then offers *Paste a bank message* and *Take the tour*.
+
+**Sample data is not offered to ordinary users.** Nine months of invented history
+is useful for demonstrating the app and confusing for someone tracking real
+money, so the control appears only for the owner — the address in
+`VITE_ADMIN_EMAIL`, or anyone at all in a build with no Firebase project, since
+such a build has no accounts to distinguish. This is tidiness, not access
+control; the security boundary is `firestore.rules`, and sample data is in any
+case only ever written to the ledger of whoever asked for it.
+
+Whenever sample data is loaded, the dashboard says so in a banner with a
+**Clear it** button. Clearing empties the ledger but keeps the choices the person
+made for themselves — theme, currency, alert thresholds — and does not make them
+sit through the tutorial again.
+
 ### Cross-referencing SMS against email
 
 One purchase often announces itself twice: the bank texts the moment the card is
@@ -389,7 +415,7 @@ erases everything.
  src/store/audit.test.ts            17  the audit trail and recycle bin
  src/engine/currency.test.ts        16  multi-currency conversion
  src/sync/model.test.ts             16  two-device merge semantics
- src/store/reducer.test.ts          15  the mandatory approval workflow
+ src/store/reducer.test.ts          19  the approval workflow, first run, sample data
  src/engine/ocr/receipt.test.ts     10  receipt field extraction
  src/export/exporters.test.ts        8  report building and CSV escaping
  src/sync/analytics.test.ts          8  that financial data cannot reach Analytics
