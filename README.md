@@ -229,7 +229,7 @@ structurally rather than by care:
 - Users are identified to Analytics by their Firebase UID. An email address is
   a person's identity and is never used.
 
-Nine tests in `src/sync/analytics.test.ts` assert this, including that a real
+Eight tests in `src/sync/analytics.test.ts` assert this, including that a real
 bank SMS, a merchant name and an email address are all rejected.
 
 ### Shipping updates to people
