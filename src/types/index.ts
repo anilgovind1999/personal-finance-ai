@@ -140,6 +140,28 @@ export interface PendingItem {
   rejectionReason?: string;
   /** Ledger transaction created on approval. */
   postedTransactionId?: string;
+  /**
+   * Other captures folded into this one — the confirmation email for a card
+   * SMS, say. Kept whole so the reviewer can read what corroborated what.
+   */
+  corroboration?: Corroboration[];
+  /** Set when this capture resembles something already captured or posted. */
+  possibleDuplicateOf?: DuplicateHint;
+}
+
+/** A second message describing the same spend as the capture it is attached to. */
+export interface Corroboration {
+  source: CaptureSource;
+  receivedAt: ISODateTime;
+  rawText: string;
+}
+
+/** A resemblance the engine would not act on alone, left for the reviewer to judge. */
+export interface DuplicateHint {
+  pendingId?: string;
+  transactionId?: string;
+  /** Why the engine thinks so, in the reviewer's language. */
+  reason: string;
 }
 
 export interface PendingDraft {
@@ -221,7 +243,7 @@ export interface CategoryDef {
 export type AuditAction =
   | 'txn.create' | 'txn.update' | 'txn.delete' | 'txn.restore' | 'txn.purge'
   | 'pending.capture' | 'pending.approve' | 'pending.reject' | 'pending.delete' | 'pending.restore'
-  | 'pending.edit' | 'pending.clearReviewed'
+  | 'pending.edit' | 'pending.clearReviewed' | 'pending.crossReference'
   | 'account.create' | 'account.update' | 'account.delete'
   | 'budget.set' | 'budget.delete'
   | 'goal.create' | 'goal.update' | 'goal.delete' | 'goal.contribute'

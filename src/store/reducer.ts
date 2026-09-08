@@ -4,6 +4,7 @@ import type {
 } from '@/types';
 import { describeAction } from './audit';
 import { generateDue } from '@/engine/recurring';
+import { findMatch, mergeCaptures } from '@/engine/reconcile';
 import { DEFAULT_CATEGORIES } from '@/data/categories';
 import { round2, todayISO, uid } from '@/lib/utils';
 
@@ -97,6 +98,43 @@ export type Action =
   | { type: 'category/remove'; name: string }
   | { type: 'settings/update'; settings: Partial<Settings> };
 
+/**
+ * Adds one capture to the review queue, folding it into an existing one when
+ * the two describe the same spend.
+ *
+ * A confirmation email arriving after the card SMS should sharpen the entry
+ * already waiting, not sit beside it as a second expense. Where the evidence
+ * falls short of certainty both are kept and the newer one carries a warning,
+ * because a duplicate the reviewer can see is a smaller harm than a real
+ * transaction quietly absorbed into another.
+ */
+function absorbCapture(state: AppState, item: PendingItem): AppState {
+  const match = findMatch(item, state.pending, state.transactions);
+
+  if (match.verdict === 'duplicate' && match.pendingId) {
+    return {
+      ...state,
+      pending: state.pending.map((p) =>
+        p.id === match.pendingId ? mergeCaptures(p, item) : p,
+      ),
+    };
+  }
+
+  const flagged: PendingItem =
+    match.verdict === 'possible'
+      ? {
+          ...item,
+          possibleDuplicateOf: {
+            pendingId: match.pendingId,
+            transactionId: match.transactionId,
+            reason: match.reasons.join(' '),
+          },
+        }
+      : item;
+
+  return { ...state, pending: [flagged, ...state.pending] };
+}
+
 /** Builds the ledger row that an approved pending item becomes. */
 export function transactionFromDraft(item: PendingItem, draft: PendingDraft): Transaction {
   const now = new Date().toISOString();
@@ -174,7 +212,10 @@ function baseReducer(state: AppState, action: Action): AppState {
     }
 
     case 'pending/add':
-      return { ...state, pending: [...action.items, ...state.pending] };
+      // Cross-referencing happens here rather than at the capture screens, so
+      // that no route into the queue — paste, share target, OCR — can add a
+      // duplicate the others would have caught.
+      return action.items.reduce(absorbCapture, state);
 
     case 'pending/updateDraft':
       return {

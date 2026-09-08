@@ -113,6 +113,19 @@ export function describeAction(action: AnyAction, before: AppState, after: AppSt
     case 'pending/add': {
       const items = action.items as AppState['pending'];
       const one = items[0];
+
+      // The queue not growing means the capture was folded into one already
+      // there. That is a decision the app made on the user's behalf, so it is
+      // recorded as its own event rather than as an ordinary capture.
+      if (items.length === 1 && one && after.pending.length === before.pending.length) {
+        const host = after.pending.find((p) => (p.corroboration?.length ?? 0) > (before.pending.find((b) => b.id === p.id)?.corroboration?.length ?? 0));
+        return entry(
+          'pending.crossReference',
+          `Cross-referenced a ${one.source} message with the ${host?.source ?? 'earlier'} capture already awaiting review — ${one.draft.amount ? formatMoney(one.draft.amount) : 'no amount'} · ${host?.draft.merchant ?? one.draft.merchant}`,
+          { entityId: host?.id, amount: one.draft.amount || undefined },
+        );
+      }
+
       return entry(
         'pending.capture',
         items.length === 1 && one

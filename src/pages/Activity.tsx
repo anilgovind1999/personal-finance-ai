@@ -19,6 +19,7 @@ const ACTION_LABEL: Partial<Record<AuditAction, string>> = {
   'txn.purge': 'Purged', 'pending.capture': 'Captured', 'pending.approve': 'Approved',
   'pending.reject': 'Rejected', 'pending.delete': 'Removed', 'pending.restore': 'Restored',
   'pending.edit': 'Edited', 'pending.clearReviewed': 'Cleared',
+  'pending.crossReference': 'Cross-referenced',
   'account.create': 'Account added', 'account.update': 'Account edited', 'account.delete': 'Account removed',
   'budget.set': 'Budget set', 'budget.delete': 'Budget removed',
   'goal.create': 'Goal created', 'goal.update': 'Goal edited', 'goal.delete': 'Goal deleted',

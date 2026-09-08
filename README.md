@@ -134,7 +134,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 202 unit tests
+npm test         # 222 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -330,6 +330,39 @@ order and never cycled — beyond eight series everything folds into a neutral
 "Other". Charts always carry a legend and direct labels, so identity is never
 carried by colour alone. Status colours are paired with an icon and a label.
 
+### Cross-referencing SMS against email
+
+One purchase often announces itself twice: the bank texts the moment the card is
+used, and the merchant emails a receipt minutes later. Both are worth capturing —
+between them they carry more than either alone, since the text knows the card and
+the email knows what was actually bought — but they must not become two expenses.
+
+So every capture is checked against the review queue and the recent ledger before
+it is added. **Amount, direction and date are gates**: the sums must agree to
+within half a rupee, the direction must match, and the two must fall within three
+days. Only then is the corroborating evidence weighed — the card's last four
+digits, the merchant names, the bank, the payment mode, and whether the two
+arrived through different channels.
+
+The rules are deliberately asymmetric, because the two mistakes are not equally
+bad. Merging two genuinely separate purchases destroys a record silently; failing
+to merge only leaves a duplicate the reviewer can see. So:
+
+- **Strong evidence** — the captures are merged. The queued item keeps its id, its
+  place in the queue and anything already typed into it; the second message is
+  attached to it, visible under *Show AI reading*, and confidence rises, because
+  two independent sources agreeing is itself the best signal the engine has.
+- **Suggestive evidence** — both are kept and the newer one is flagged *"This looks
+  like another entry waiting for review."* The reviewer decides.
+- **Two different cards, two different merchants, or an amount a rupee apart** —
+  treated as separate events, whatever else lines up.
+
+A capture that matches money **already posted to the ledger** is never merged, only
+flagged: that money is recorded, and approving the capture would count it twice.
+
+Every merge is written to the audit trail as its own *Cross-referenced* event, so
+a decision the app made on your behalf is never invisible.
+
 ### Transfers
 
 Money you move between your own accounts — paying a credit card bill, topping up
@@ -348,11 +381,18 @@ erases everything.
 ## Testing
 
 ```
- src/engine/parser/parser.test.ts   35  message parsing, amounts, dates, categories
  src/engine/engine.test.ts          36  analytics, budgets, forecasts, insights, health, search
+ src/engine/parser/parser.test.ts   35  message parsing, amounts, dates, categories
+ src/engine/income-recurring.test.ts 22 income tracking and recurring rules
+ src/engine/reconcile.test.ts       20  SMS/email cross-referencing and its limits
+ src/engine/parser/bank-sms.test.ts 19  real-world bank SMS shapes
+ src/store/audit.test.ts            17  the audit trail and recycle bin
+ src/engine/currency.test.ts        16  multi-currency conversion
+ src/sync/model.test.ts             16  two-device merge semantics
  src/store/reducer.test.ts          15  the mandatory approval workflow
  src/engine/ocr/receipt.test.ts     10  receipt field extraction
  src/export/exporters.test.ts        8  report building and CSV escaping
+ src/sync/analytics.test.ts          8  that financial data cannot reach Analytics
 ```
 
 Plus two end-to-end browser passes, both run against the production build served

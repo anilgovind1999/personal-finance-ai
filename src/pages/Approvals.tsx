@@ -190,13 +190,24 @@ function PendingCard({
             <Badge tone="neutral">{item.draft.date}</Badge>
             {item.draft.kind === 'income' && <Badge tone="good">Income</Badge>}
             {account && <Badge tone="neutral">{account.cardName || account.accountName} ····{account.last4}</Badge>}
-            <span className="text-[11px] text-subtle">via {SOURCE_LABEL[item.source] ?? item.source}</span>
+            <span className="text-[11px] text-subtle">
+              via {SOURCE_LABEL[item.source] ?? item.source}
+              {item.corroboration?.map((c) => ` + ${SOURCE_LABEL[c.source] ?? c.source}`).join('')}
+            </span>
+            {!!item.corroboration?.length && <Badge tone="good">Cross-checked</Badge>}
           </div>
 
           <div className="mt-1.5">
             {uncertainCategory && (
               <p className="text-[11px] font-medium text-warning">
                 The category is a guess — check it before approving.
+              </p>
+            )}
+            {item.possibleDuplicateOf && (
+              <p className="text-[11px] font-medium text-warning">
+                {item.possibleDuplicateOf.transactionId
+                  ? 'This looks like a transaction already in your ledger. Approving it would count the money twice.'
+                  : 'This looks like another entry waiting for review. Approve only one of them.'}
               </p>
             )}
           </div>
@@ -215,8 +226,16 @@ function PendingCard({
       </div>
 
       {showDetail && (
-        <div className="mt-3">
+        <div className="mt-3 space-y-2">
           <ExtractionPreview raw={item.rawText} result={item.extraction} />
+          {item.corroboration?.map((c) => (
+            <div key={c.receivedAt + c.source} className="rounded-xl border border-good/30 bg-good/5 p-2.5">
+              <p className="mb-1 text-[11px] font-semibold text-good">
+                Also received via {SOURCE_LABEL[c.source] ?? c.source} — same amount and date
+              </p>
+              <p className="whitespace-pre-wrap break-words text-[11px] leading-relaxed text-muted">{c.rawText}</p>
+            </div>
+          ))}
         </div>
       )}
 
