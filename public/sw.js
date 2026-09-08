@@ -13,7 +13,13 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(VERSION).then((cache) => cache.addAll(SHELL).catch(() => undefined)),
   );
-  self.skipWaiting();
+  // Deliberately NOT skipWaiting() here: a running app should not be swapped
+  // out from under someone mid-entry. The page asks for the swap when the user
+  // accepts the update prompt.
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

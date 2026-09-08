@@ -14,7 +14,9 @@ import { Settings } from '@/pages/Settings';
 import { Activity } from '@/pages/Activity';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { SignIn } from '@/pages/SignIn';
+import { AccessGate } from '@/pages/AccessGate';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 const ROUTES: Route[] = [
   'dashboard', 'transactions', 'capture', 'approvals', 'analytics',
@@ -56,6 +58,18 @@ function Router() {
 
   if (cloud.configured && !cloud.account) return <SignIn />;
 
+  // Signed in, but not yet allowed through: explain which of the two it is.
+  if (cloud.configured && cloud.account && (!cloud.account.emailVerified || cloud.invited === false)) {
+    return (
+      <AccessGate
+        account={cloud.account}
+        reason={cloud.account.emailVerified ? 'not-invited' : 'unverified'}
+        onSignOut={() => void cloud.signOut()}
+        onRecheck={() => void cloud.recheckAccess()}
+      />
+    );
+  }
+
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-plane">
@@ -88,6 +102,7 @@ function Router() {
       {route === 'settings' && <Settings onNavigate={navigate} />}
       <QuickAdd open={quickAdd} onClose={() => setQuickAdd(false)} />
       <InstallPrompt />
+      <UpdatePrompt />
     </Shell>
   );
 }

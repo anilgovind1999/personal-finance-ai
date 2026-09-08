@@ -175,6 +175,28 @@ reconnects.
 7. On Netlify or Vercel, add the same `VITE_FIREBASE_*` values as environment
    variables, and add your deployed domain under **Authentication → Settings →
    Authorised domains**.
+8. Invite people: **Firestore → Start collection → `allowlist`**, and add one
+   document per person whose **Document ID is their email address in lower
+   case**. The document needs no fields. Remove the document to revoke access.
+
+**Who can get in.** Firebase Auth lets anyone create an account — that is a
+property of Auth, and no security rule can prevent it. What the rules prevent is
+an uninvited account reading or writing *anything*, so the app is inert for
+them; they see a "not on the invite list" screen. Access is keyed to a verified
+email address, so registering under someone else's address does not work: the
+verification link has to be opened first. To stop account creation outright,
+turn off self-registration in **Authentication → Settings → User actions**.
+
+### Shipping updates to people
+
+Once deployed, you never send anyone a file again. Push to the branch, your host
+rebuilds, and the running app notices: the service worker fetches the new build
+in the background and the app offers *"A new version is ready — Reload now"*.
+Nothing reloads by itself, so a half-typed entry is never lost. A tab left open
+for days re-checks hourly.
+
+Old caches are deleted when the new version takes over, and stored data is
+untouched by an update.
 
 **On the config values being public.** A Firebase web config is designed to ship
 in the client; it identifies the project, it does not authorise anything. What

@@ -93,6 +93,8 @@ export interface AccountInfo {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  /** Google sign-in is verified by definition; email/password is not. */
+  emailVerified: boolean;
 }
 
 function toAccount(user: User): AccountInfo {
@@ -101,6 +103,7 @@ function toAccount(user: User): AccountInfo {
     email: user.email,
     displayName: user.displayName,
     photoURL: user.photoURL,
+    emailVerified: user.emailVerified,
   };
 }
 
@@ -148,9 +151,49 @@ export async function signInWithPassword(email: string, password: string): Promi
 export async function registerWithPassword(email: string, password: string, name?: string): Promise<void> {
   const svc = await services();
   if (!svc) throw new Error('Cloud sync is not configured in this build.');
-  const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+  const { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } = await import('firebase/auth');
   const cred = await createUserWithEmailAndPassword(svc.auth, email.trim(), password);
   if (name?.trim()) await updateProfile(cred.user, { displayName: name.trim() }).catch(() => undefined);
+  // Access is granted by email address, so the address has to be proven — or
+  // anyone could register under an invited person's email and walk in.
+  await sendEmailVerification(cred.user).catch(() => undefined);
+}
+
+/** Sends the verification email again, for someone who lost the first one. */
+export async function resendVerification(): Promise<void> {
+  const svc = await services();
+  if (!svc?.auth.currentUser) throw new Error('Not signed in.');
+  const { sendEmailVerification } = await import('firebase/auth');
+  await sendEmailVerification(svc.auth.currentUser);
+}
+
+/** Re-reads the account from Firebase, to pick up a verification done elsewhere. */
+export async function refreshAccount(): Promise<AccountInfo | null> {
+  const svc = await services();
+  const user = svc?.auth.currentUser;
+  if (!user) return null;
+  await user.reload();
+  await user.getIdToken(true);
+  return toAccount(user);
+}
+
+/**
+ * Whether this address is on the owner's allowlist.
+ *
+ * The rules allow a signed-in person to read only their own entry, so this
+ * cannot be used to enumerate who else has access. A denial from the rules is
+ * indistinguishable from a missing entry, and both mean the same thing here.
+ */
+export async function isInvited(email: string | null): Promise<boolean> {
+  const svc = await services();
+  if (!svc || !email) return false;
+  try {
+    const { doc, getDoc } = await import('firebase/firestore');
+    const snap = await getDoc(doc(svc.db, 'allowlist', email.trim().toLowerCase()));
+    return snap.exists();
+  } catch {
+    return false;
+  }
 }
 
 export async function signInWithGoogle(): Promise<void> {
