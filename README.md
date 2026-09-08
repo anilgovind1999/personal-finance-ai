@@ -120,7 +120,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 162 unit tests
+npm test         # 178 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -139,6 +139,52 @@ somewhere that does not let a page save files directly — the single-file previ
 build is the case that matters — `downloadBlob` routes the save through the
 host, which shows the viewer a confirmation naming the file. A viewer who
 declines is not treated as an error.
+
+### Accounts and cross-device sync
+
+Out of the box the app stores everything in your browser's IndexedDB: no
+account, no server, and **no sync** — your phone and your laptop hold separate
+copies. Supplying a Firebase project turns on real accounts and live sync.
+
+**What you get.** Email/password and Google sign-in; each person who signs in
+sees only their own ledger; changes made on one device appear on the others
+within a few seconds; the app keeps working offline and reconciles when it
+reconnects.
+
+**Setup, once:**
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
+2. **Authentication → Sign-in method**: enable *Email/Password*, and *Google* if
+   you want it.
+3. **Firestore Database → Create database** (production mode).
+4. **Project settings → General → Your apps → Web**: register an app and copy
+   the config values.
+5. `cp .env.example .env.local` and paste those values in. Rebuild.
+6. Deploy the security rules — this step is not optional, it is what actually
+   separates one user's data from another's:
+   ```bash
+   npx firebase-tools deploy --only firestore:rules
+   ```
+7. On Netlify or Vercel, add the same `VITE_FIREBASE_*` values as environment
+   variables, and add your deployed domain under **Authentication → Settings →
+   Authorised domains**.
+
+**On the config values being public.** A Firebase web config is designed to ship
+in the client; it identifies the project, it does not authorise anything. What
+protects the data is `firestore.rules` plus Firebase Auth. `.env.local` is
+gitignored anyway.
+
+**How conflicts are handled.** State is split across four documents so unrelated
+edits do not collide, and records are merged by id rather than one device
+overwriting the other — two devices that were both offline keep both sets of
+entries. Deletions survive a merge because a deleted record sits in the recycle
+bin, which acts as a tombstone. Rarely-changed things (accounts, budgets,
+settings) take whichever device changed them most recently.
+
+**Two limits worth knowing.** Receipt images stay on the device that captured
+them — they are not uploaded. And each Firestore document has a 1 MiB ceiling;
+the app warns you well before your transaction history gets near it, at which
+point the store needs splitting into per-record documents.
 
 ### Deploying
 
@@ -181,6 +227,7 @@ src/
     health      the weighted 0-100 financial health score
     search      natural-language question answering
   store/        reducer (approval rules live here), audit log, persistence, demo data
+  sync/         cloud account, per-user documents, two-device merge rules
   db/           IndexedDB wrapper — app state plus receipt blobs
   components/   design system, charts, shell, shared transaction form
   pages/        dashboard, capture, approvals, transactions, analytics,

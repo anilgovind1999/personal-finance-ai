@@ -13,6 +13,7 @@ import { Reports } from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
 import { Activity } from '@/pages/Activity';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
+import { SignIn } from '@/pages/SignIn';
 
 const ROUTES: Route[] = [
   'dashboard', 'transactions', 'capture', 'approvals', 'analytics',
@@ -25,7 +26,7 @@ function routeFromHash(): Route {
 }
 
 function Router() {
-  const { ready } = useStore();
+  const { ready, cloud } = useStore();
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [quickAdd, setQuickAdd] = useState(false);
 
@@ -41,6 +42,18 @@ function Router() {
     setRoute(next);
     window.scrollTo({ top: 0 });
   };
+
+  // A cloud-enabled build waits for the account before showing anything, so a
+  // signed-out visitor never briefly sees someone else's screen shape.
+  if (cloud.configured && cloud.initialising) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-plane">
+        <p className="text-xs text-subtle">Checking your account…</p>
+      </div>
+    );
+  }
+
+  if (cloud.configured && !cloud.account) return <SignIn />;
 
   if (!ready) {
     return (

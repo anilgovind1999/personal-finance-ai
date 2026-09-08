@@ -5,6 +5,7 @@ import type {
 import { loadState, saveState, clearState, putAttachment, deleteAttachment } from '@/db/idb';
 import { draftFromExtraction, emptyState, migrate, reducer, type Action } from './reducer';
 import { parseMessage } from '@/engine/parser';
+import { useCloudSync, type CloudSync } from '@/sync/useCloudSync';
 import { uid } from '@/lib/utils';
 
 interface StoreValue {
@@ -17,6 +18,8 @@ interface StoreValue {
   storeAttachment: (file: File) => Promise<string>;
   removeAttachment: (id: string) => Promise<void>;
   resetAll: () => Promise<void>;
+  /** Cloud account and sync status; inert when no Firebase project is configured. */
+  cloud: CloudSync;
   toast: (message: string, tone?: ToastTone) => void;
   toasts: Toast[];
   dismissToast: (id: string) => void;
@@ -127,12 +130,23 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'reset' });
   }, []);
 
+  // Applies a merged copy from another device without echoing it straight back.
+  const applyRemote = useCallback(
+    (next: AppState, notes: string[]) => {
+      dispatch({ type: 'hydrate', state: next });
+      if (notes.length) toast(notes.join(' · '), 'info');
+    },
+    [toast],
+  );
+
+  const cloud = useCloudSync(state, ready, applyRemote);
+
   const value = useMemo<StoreValue>(
     () => ({
       state, dispatch, ready, captureText, captureExtraction, storeAttachment,
-      removeAttachment, resetAll, toast, toasts, dismissToast,
+      removeAttachment, resetAll, cloud, toast, toasts, dismissToast,
     }),
-    [state, ready, captureText, captureExtraction, storeAttachment, removeAttachment, resetAll, toast, toasts, dismissToast],
+    [state, ready, captureText, captureExtraction, storeAttachment, removeAttachment, resetAll, cloud, toast, toasts, dismissToast],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

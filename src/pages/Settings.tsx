@@ -11,7 +11,7 @@ import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
 import { downloadBlob, monthKey, todayISO } from '@/lib/utils';
 
 export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
-  const { state, dispatch, captureText, resetAll, toast } = useStore();
+  const { state, dispatch, captureText, resetAll, cloud, toast } = useStore();
   const confirm = useConfirm();
   const [confirmReset, setConfirmReset] = useState(false);
   const [thresholds, setThresholds] = useState(state.settings.alertThresholds.join(', '));
@@ -92,6 +92,63 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
             </li>
           ))}
         </ul>
+      </Card>
+
+      <Card title="Account & sync" subtitle={cloud.configured ? 'Your data follows this account across devices' : 'This build stores everything on this device only'}>
+        {cloud.configured && cloud.account ? (
+          <>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent/12 text-sm font-bold text-accent">
+                {(cloud.account.displayName || cloud.account.email || '?').slice(0, 1).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{cloud.account.displayName || 'Signed in'}</p>
+                <p className="truncate text-xs text-muted">{cloud.account.email}</p>
+              </div>
+              <Badge
+                tone={cloud.phase === 'synced' ? 'good' : cloud.phase === 'error' ? 'critical' : 'warning'}
+              >
+                {cloud.phase === 'synced' ? 'Synced'
+                  : cloud.phase === 'saving' ? 'Saving…'
+                  : cloud.phase === 'error' ? 'Sync problem'
+                  : 'Connecting…'}
+              </Badge>
+            </div>
+
+            {cloud.lastSyncedAt && (
+              <p className="mt-2 text-xs text-muted">
+                Last synced {new Date(cloud.lastSyncedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}.
+                Changes on another device appear here within a few seconds.
+              </p>
+            )}
+            {cloud.error && <p className="mt-2 text-xs text-critical">{cloud.error}</p>}
+
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
+              <Button onClick={() => { cloud.pushNow(); toast('Pushing your latest changes'); }}>Sync now</Button>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Sign out?',
+                    message: 'You will need to sign in again to see your ledger on this device.',
+                    reassurance: 'Your data stays in your account and on your other devices. The copy cached in this browser is left in place.',
+                    confirmLabel: 'Sign out',
+                  });
+                  if (!ok) return;
+                  await cloud.signOut();
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs leading-relaxed text-muted">
+            No cloud project is configured in this build, so your ledger lives only in this browser and does
+            not sync to your other devices. Set the Firebase environment variables at build time to turn on
+            accounts and sync — the steps are in the README.
+          </p>
+        )}
       </Card>
 
       <Card title="Appearance">
