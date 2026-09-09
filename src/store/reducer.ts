@@ -14,7 +14,6 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark',
   currency: 'INR',
   liveRates: false,
-  usageAnalytics: true,
   locale: 'en-IN',
   monthStartDay: 1,
   alertThresholds: [80, 90, 100],

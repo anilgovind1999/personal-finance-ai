@@ -143,7 +143,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 282 unit tests
+npm test         # 274 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -198,9 +198,6 @@ reconnects.
 7. On Netlify or Vercel, add the same `VITE_FIREBASE_*` values as environment
    variables, and add your deployed domain under **Authentication → Settings →
    Authorised domains**.
-8. Optionally set `VITE_ADMIN_EMAIL` to your own address. Sample-data tools are
-   then hidden from everyone else, so a real user is not offered nine months of
-   invented history.
 
 **Who can sign up.** Anyone with the URL can create an account with their own
 email and password. There is no invite list and nothing for you to approve.
@@ -219,30 +216,45 @@ an email can be changed or re-registered, a UID cannot. There is no rule
 anywhere granting a signed-in user access to anyone else's subtree, and a
 default-deny rule covers everything outside it.
 
-### Usage statistics
+### No analytics
 
-The app can report **how much it is used**, so its author can see how many
-people have accounts and which features get opened. This is off in any build
-without `VITE_FIREBASE_MEASUREMENT_ID`, and users can switch it off in
-Settings.
+FinSight sends nothing to Google Analytics, or to any other analytics service.
+There is no measurement ID, no tag, no usage events, and no setting to turn any
+of that on, because none of it exists.
 
-**No financial information is ever sent.** Not amounts, merchants, categories,
-accounts, balances, income, receipts, SMS bodies or OCR text. That is enforced
-structurally rather than by care:
+This was a deliberate reversal. An earlier version reported privacy-safe usage
+counts — screen names and feature names, never figures. Supporting it meant
+allowing a third-party script origin (`googletagmanager.com`) in `script-src`,
+which is a real weakening of the policy: it is permission for someone else's
+code to run on a page holding a person's entire financial history. Knowing how
+many people opened the Budgets screen is not worth that.
 
-- Event names come from a fixed list in `src/sync/analytics.ts`; an arbitrary
-  string cannot be logged.
-- Only six parameter keys are permitted, and every value must be a short
-  lower-case slug. A merchant name, an SMS body or a rupee amount fails that
-  test and is dropped before the call — there is no shape in which financial
-  data could be expressed.
-- Counts are bucketed (`1`, `2-5`, `6-20`, …) so an exact figure never leaves
-  the device.
-- Users are identified to Analytics by their Firebase UID. An email address is
-  a person's identity and is never used.
+The only servers the app talks to are your own Firebase project, and
+`open.er-api.com` if you switch on live currency rates.
 
-Eight tests in `src/sync/analytics.test.ts` assert this, including that a real
-bank SMS, a merchant name and an email address are all rejected.
+### Content Security Policy
+
+`netlify.toml` and `vercel.json` both send the same policy. `connect-src` names
+exactly the hosts the app needs and nothing else:
+
+| Host | Why |
+|---|---|
+| `identitytoolkit.googleapis.com` | Registration, sign-in, password reset, email verification |
+| `securetoken.googleapis.com` | Refreshing the session token |
+| `firestore.googleapis.com` | Reading and writing your ledger |
+| `firebaseinstallations.googleapis.com` | The Firebase SDK's own client registration |
+| `open.er-api.com` | Currency rates, only if you turn live rates on |
+
+Google sign-in additionally needs `https://apis.google.com` in `script-src` and
+the auth iframe in `frame-src`. If you only use email and password, both can be
+removed and the policy gets tighter still.
+
+`frame-src` carries `https://*.firebaseapp.com` because the auth domain is
+particular to your project and these files are static. Pin it to your own —
+`https://your-project.firebaseapp.com` — and the last wildcard is gone.
+
+There are no `https:` or `*` sources anywhere in the policy, and `default-src`
+stays `'self'`.
 
 ### Shipping updates to people
 
@@ -353,12 +365,11 @@ skippable at any point, never appears again on its own, and can be replayed from
 The empty dashboard then offers *Paste a bank message* and *Take the tour*.
 
 **Sample data is not offered to ordinary users.** Nine months of invented history
-is useful for demonstrating the app and confusing for someone tracking real
-money, so the control appears only for the owner — the address in
-`VITE_ADMIN_EMAIL`, or anyone at all in a build with no Firebase project, since
-such a build has no accounts to distinguish. This is tidiness, not access
-control; the security boundary is `firestore.rules`, and sample data is in any
-case only ever written to the ledger of whoever asked for it.
+is useful for showing the app to someone and confusing for anyone tracking real
+money, so it appears only in a build with no Firebase project behind it — a local
+or demo copy. The deployment people actually sign in to never offers it. No
+account, email address or role is consulted to decide this; it is simply absent
+where it does not belong.
 
 Whenever sample data is loaded, the dashboard says so in a banner with a
 **Clear it** button. Clearing empties the ledger but keeps the choices the person
@@ -478,11 +489,16 @@ does not double-count the purchases you already recorded.
 
 ## Privacy
 
-Everything is stored locally in IndexedDB in your browser. Nothing is uploaded,
-there is no account, and no analytics or telemetry. Full account and card numbers
-are never requested or stored — only the last four digits. Settings → *Export
-backup* writes a JSON file you can restore later; clearing browser site data
-erases everything.
+Everything is stored locally in IndexedDB in your browser first, and the app
+works fully with no account at all. Supply a Firebase project and a copy also
+syncs to **your own** project, under your own user id, readable by nobody else —
+see the security rules above.
+
+There is no analytics and no telemetry of any kind. Messages, receipts and
+statements are read on the device; no image, PDF or message body is ever
+uploaded anywhere. Full account and card numbers are never requested or stored —
+only the last four digits. Settings → *Export backup* writes a JSON file you can
+restore later; clearing browser site data erases the local copy.
 
 ## Testing
 
@@ -499,7 +515,6 @@ erases everything.
  src/store/reducer.test.ts          19  the approval workflow, first run, sample data
  src/engine/ocr/receipt.test.ts     10  receipt field extraction
  src/export/exporters.test.ts        8  report building and CSV escaping
- src/sync/analytics.test.ts          8  that financial data cannot reach Analytics
  src/import/pdf.test.ts             10  rebuilding a table from positioned PDF text
  src/import/pdf-roundtrip.test.ts    6  producing a real PDF and reading it back
  src/import/sheet.test.ts            4  reading a real .xlsx workbook

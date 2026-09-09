@@ -6,7 +6,6 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Badge, Button, Card, EmptyState, Field, Select, cx } from '@/components/ui/Primitives';
 import { IconAlert, IconCheck, IconDownload, IconLedger } from '@/components/Icons';
 import { formatMoney, uid } from '@/lib/utils';
-import { track } from '@/sync/analytics';
 import {
   buildRows, detectColumns, FIELD_LABEL, parseDelimited, PdfPasswordRequired, readFile,
   summarise, type ColumnMap, type FieldName, type ImportRow, type RawTable,
@@ -72,7 +71,6 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
       accept(await readFile(file, pw), file.name);
       setLocked(null);
       setPassword('');
-      void track('feature_used', { feature: 'import', source: file.name.endsWith('.pdf') ? 'pdf' : 'file' });
     } catch (err) {
       setTable(null);
       if (err instanceof PdfPasswordRequired) {
@@ -143,7 +141,6 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
     }));
 
     dispatch({ type: 'txn/addMany', txns });
-    void track('feature_used', { feature: 'import', outcome: 'approved' });
     toast(`Imported ${txns.length} transaction${txns.length === 1 ? '' : 's'} from ${sourceName || 'your file'}`);
     onNavigate('transactions');
   };
@@ -246,7 +243,6 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
               disabled={pasted.trim().length < 10}
               onClick={() => {
                 accept(parseDelimited(pasted), 'pasted rows');
-                void track('feature_used', { feature: 'import', source: 'text' });
               }}
             >
               Read these rows

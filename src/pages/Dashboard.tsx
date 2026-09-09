@@ -16,14 +16,14 @@ import { forecastMonthEnd } from '@/engine/forecast';
 import { generateInsights, type InsightSeverity } from '@/engine/insights';
 import { financialHealth } from '@/engine/health';
 import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
-import { isOwner } from '@/sync/admin';
 import { addMonthsToKey, formatMoney, formatShortMoney, monthKey, monthLabel, todayISO } from '@/lib/utils';
 
 export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const { state, dispatch, captureText, cloud, toast } = useStore();
-  // Nine months of invented history helps whoever is demonstrating the app and
-  // nobody who is tracking real money, so it is offered only to its owner.
-  const owner = isOwner(cloud.account, cloud.configured);
+  // Nine months of invented history helps whoever is showing the app to someone
+  // and nobody who is tracking real money, so a build wired to a real Firebase
+  // project — the one people actually sign in to — does not offer it.
+  const showSampleData = !cloud.configured;
   const today = todayISO();
   const month = monthKey(today);
   const pendingCount = state.pending.filter((p) => p.status === 'pending').length;
@@ -87,7 +87,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
                   Take the tour
                 </Button>
                 <Button onClick={() => onNavigate('import')}>Import existing data</Button>
-                {owner && <Button onClick={loadDemo}>Load sample data</Button>}
+                {showSampleData && <Button onClick={loadDemo}>Load sample data</Button>}
               </div>
             }
           />

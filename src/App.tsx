@@ -17,7 +17,6 @@ import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { SignIn } from '@/pages/SignIn';
 import { AccessGate } from '@/pages/AccessGate';
 import { InstallPrompt } from '@/components/InstallPrompt';
-import { track } from '@/sync/analytics';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { Tour } from '@/components/Tour';
 
@@ -47,8 +46,6 @@ function Router() {
     window.location.hash = `#/${next}`;
     setRoute(next);
     window.scrollTo({ top: 0 });
-    // The route name only — a fixed slug from the Route union.
-    void track('screen_view', { screen: next });
   };
 
   // A cloud-enabled build waits for the account before showing anything, so a

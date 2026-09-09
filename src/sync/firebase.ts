@@ -19,8 +19,6 @@ export interface FirebaseConfig {
   storageBucket?: string;
   messagingSenderId?: string;
   appId: string;
-  /** Only set when the project has Google Analytics enabled. */
-  measurementId?: string;
 }
 
 export function readConfig(): FirebaseConfig | null {
@@ -37,7 +35,6 @@ export function readConfig(): FirebaseConfig | null {
     appId,
     storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    measurementId: env.VITE_FIREBASE_MEASUREMENT_ID,
   };
 }
 
