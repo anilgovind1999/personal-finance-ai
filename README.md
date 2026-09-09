@@ -143,7 +143,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 274 unit tests
+npm test         # 288 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -203,11 +203,35 @@ reconnects.
 email and password. There is no invite list and nothing for you to approve.
 
 **Email verification is required.** Registration sends a verification link, and
-the security rules reject an unverified account, so no financial data can be
-read or written until the address is confirmed. Users who have not confirmed see
-a screen explaining it, with *Resend verification email* and *I've verified my
-email*; it also polls, so confirming on a phone continues the session already
-open on a laptop.
+the security rules reject an unverified account, so no financial data can be read
+or written until the address is confirmed. The gate screen polls, so confirming
+on a phone continues the session already open on a laptop.
+
+The screen reports what actually happened rather than assuming. If the send
+failed — Firebase rate-limits these, and a project can exhaust its daily quota —
+it says so, and says why, instead of telling someone to watch an inbox for a
+message that was never sent. Sending is never allowed to throw: the account
+exists either way, and an error there reads as "registration failed", which sends
+people round to create it a second time and trips the rate limiter that caused
+the problem.
+
+A 60-second cooldown sits in front of every send, ours rather than Firebase's, so
+the button reports a wait instead of spending an attempt that would be refused.
+The app retries a failure on its own at most three times and then stops and waits
+to be asked: a project that has exhausted its daily email quota would otherwise be
+hit once a minute for as long as the tab stays open, which helps nobody and is
+exactly what earns a rate limit. Pressing Resend always works, and does not count
+against that budget. Failures that no amount of retrying will fix — an
+unauthorised continue URL, a sign-in method that is off — are named as such and
+the button is disabled.
+
+*I've verified my email* reloads the account from Firebase and refreshes the token
+so the new `email_verified` claim is in it, then unlocks. When the address still
+is not confirmed it says so, rather than appearing to do nothing.
+
+The link carries a continue URL back to the app. That URL has to be an authorised
+domain, so if the project has not had this one added the send would fail outright;
+it retries once without the continue URL rather than sending nothing.
 
 **How users are kept apart.** Every document lives under
 `users/{firebase-auth-uid}`, and the rules compare that path segment against the
@@ -279,6 +303,19 @@ amount of fixing the source will change what the browser does.
 
 The service worker's cache is named after the build id too, so a new deploy can
 never serve the previous build's files.
+
+### Why the build is root-absolute
+
+`vite.config.ts` sets `base: '/'`, not `'./'`, and the manifest uses absolute
+paths. This matters more than it looks. All three hosts rewrite unknown paths to
+`index.html`, so from any URL other than `/` a *relative* `<link rel="manifest">`
+resolves to a path that does not exist, gets the app's own HTML back, and fails
+to parse — and an installed app with an unparsed manifest falls back to a generic
+icon. The service worker registration had the same flaw: registered from a deep
+path it would take that path as its scope.
+
+The manifest is also served with an explicit `application/manifest+json`
+content type, since a manifest served as anything else is ignored.
 
 ### Shipping updates to people
 
@@ -542,6 +579,7 @@ restore later; clearing browser site data erases the local copy.
  src/import/pdf.test.ts             10  rebuilding a table from positioned PDF text
  src/import/pdf-roundtrip.test.ts    6  producing a real PDF and reading it back
  src/import/sheet.test.ts            4  reading a real .xlsx workbook
+ src/sync/verification.test.ts      14  confirmation-email cooldown, retry budget, failures
 ```
 
 Plus two end-to-end browser passes, both run against the production build served

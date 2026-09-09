@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Button, Card } from '@/components/ui/Primitives';
 import { IconShield, IconSparkles } from '@/components/Icons';
-import { authErrorMessage, refreshAccount, resendVerification, type AccountInfo } from '@/sync/firebase';
+import {
+  refreshAccount, resendVerification, sendVerification, verificationCooldownMs, verificationState,
+  type AccountInfo,
+} from '@/sync/firebase';
+import { autoAttemptsSpent, isPermanent, type VerificationState } from '@/sync/verification';
 
 /**
  * Shown to someone who is signed in but has not confirmed their email address.
@@ -18,9 +22,26 @@ export function AccessGate({
   onRecheck: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('');
-  const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
+  const [state, setState] = useState<VerificationState>(() => verificationState(account.uid));
+  const [cooldown, setCooldown] = useState(() => verificationCooldownMs(account.uid));
+  /** What the last "I've verified" press found, when it did not unlock. */
+  const [checkResult, setCheckResult] = useState('');
+
+  // An account that arrived here without a successful send — the first attempt
+  // failed, or the app was reopened later — gets one now. sendVerification will
+  // decline if one already went out, if the cooldown is running, or once it has
+  // tried a few times on its own: this is not allowed to become a loop that
+  // hammers the project's email quota for as long as the tab is open.
+  useEffect(() => {
+    let cancelled = false;
+    void sendVerification().then((next) => {
+      if (!cancelled) setState(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [account.uid]);
 
   // Verification happens in another tab or on the phone, so keep looking.
   useEffect(() => {
@@ -30,6 +51,17 @@ export function AccessGate({
     }, 5000);
     return () => clearInterval(handle);
   }, [onRecheck]);
+
+  // Counts the resend cooldown down, so the button explains itself.
+  useEffect(() => {
+    const handle = setInterval(() => setCooldown(verificationCooldownMs(account.uid)), 1000);
+    return () => clearInterval(handle);
+  }, [account.uid]);
+
+  const sent = Boolean(state.sentAt) && !state.error;
+  const stuck = isPermanent(state.code);
+  const givenUp = autoAttemptsSpent(state);
+  const waiting = Math.ceil(cooldown / 1000);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-plane px-4 py-10">
@@ -46,39 +78,64 @@ export function AccessGate({
 
         <Card>
           <h2 className="text-sm font-semibold">Confirm your email address</h2>
-          <p className="mt-1.5 text-xs leading-relaxed text-muted">
-            We sent a link to <strong className="text-ink">{account.email}</strong>. Open it, and this
-            page will continue on its own.
-          </p>
+
+          {sent ? (
+            <p className="mt-1.5 text-xs leading-relaxed text-muted">
+              We sent a link to <strong className="text-ink">{account.email}</strong>. Open it, and this
+              page will continue on its own.
+            </p>
+          ) : state.error ? (
+            <p className="mt-1.5 rounded-xl border border-critical/35 bg-critical/10 px-3 py-2.5 text-xs leading-relaxed text-ink">
+              <strong className="text-ink">The confirmation email could not be sent.</strong>{' '}
+              {state.error}
+              {stuck && ' This one needs fixing on the Firebase project — resending will not help.'}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs leading-relaxed text-muted">
+              Sending a link to <strong className="text-ink">{account.email}</strong>…
+            </p>
+          )}
+
           <p className="mt-2 text-xs leading-relaxed text-muted">
             Confirming proves the address belongs to you before any of your financial data is stored.
-            Check your spam folder if it has not arrived.
+            {sent && ' Check your spam folder if it has not arrived — it comes from a noreply@ address.'}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               variant="primary"
-              disabled={busy}
+              disabled={busy || waiting > 0 || stuck}
               onClick={async () => {
-                setBusy(true); setError(''); setNotice('');
-                try {
-                  await resendVerification();
-                  setNotice('Sent. Check your inbox.');
-                } catch (err) {
-                  setError(authErrorMessage(err));
-                } finally {
-                  setBusy(false);
-                }
+                setBusy(true);
+                const next = await resendVerification();
+                setState(next);
+                setCooldown(verificationCooldownMs(account.uid));
+                setBusy(false);
               }}
             >
-              Resend verification email
+              {busy
+                ? 'Sending…'
+                : waiting > 0
+                  ? `Resend in ${waiting}s`
+                  : sent
+                    ? 'Send it again'
+                    : 'Try again'}
             </Button>
             <Button
               disabled={checking}
               onClick={async () => {
                 setChecking(true);
-                await refreshAccount();
+                setCheckResult('');
+                const fresh = await refreshAccount();
+                // onRecheck lifts the fresh account into the app, which unlocks
+                // it when the address is confirmed. When it is not, saying so is
+                // the difference between a button that works and one that looks
+                // broken.
                 onRecheck();
+                if (!fresh) setCheckResult('Your session has expired — sign in again.');
+                else if (!fresh.emailVerified) {
+                  setCheckResult('Not confirmed yet. Open the link in the email first, then press this again.');
+                }
                 setChecking(false);
               }}
             >
@@ -86,8 +143,21 @@ export function AccessGate({
             </Button>
           </div>
 
-          {notice && <p className="mt-3 text-xs font-medium text-good">{notice}</p>}
-          {error && <p className="mt-3 text-xs font-medium text-critical">{error}</p>}
+          {checkResult && <p className="mt-3 text-xs font-medium text-warning">{checkResult}</p>}
+
+          {givenUp && !stuck && (
+            <p className="mt-3 text-[11px] leading-relaxed text-subtle">
+              The app has stopped trying by itself so it does not keep asking Firebase for an email it
+              will not send. Use the button above when you are ready to try again.
+            </p>
+          )}
+
+          {sent && waiting > 0 && (
+            <p className="mt-3 text-[11px] text-subtle">
+              Another can be sent in {waiting} second{waiting === 1 ? '' : 's'}. The wait is ours, not
+              Firebase's — sending faster than this is what makes it refuse to send at all.
+            </p>
+          )}
 
           <div className="mt-4 border-t border-line pt-3">
             <button type="button" onClick={onSignOut} className="text-xs font-semibold text-accent hover:underline">

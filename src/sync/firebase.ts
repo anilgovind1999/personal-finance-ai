@@ -88,6 +88,11 @@ export function services(): Promise<Services | null> {
   return servicesPromise;
 }
 
+import {
+  clearState, isPermanent, loadState, recordFailure, recordSent, remainingCooldownMs,
+  saveState, shouldSend, type VerificationState,
+} from './verification';
+
 export interface AccountInfo {
   uid: string;
   email: string | null;
@@ -135,6 +140,14 @@ export function authErrorMessage(err: unknown): string {
     'auth/popup-blocked': 'Your browser blocked the sign-in popup. Allow popups and retry.',
     'auth/operation-not-allowed': 'That sign-in method is not enabled on the Firebase project.',
     'auth/unauthorized-domain': 'This site is not in the Firebase project’s authorised domains.',
+    'auth/unauthorized-continue-uri': 'This site is not in the Firebase project’s authorised domains, so the confirmation link cannot point back here.',
+    'auth/invalid-continue-uri': 'The link the email should return to is not a valid address.',
+    'auth/missing-continue-uri': 'The link the email should return to is missing.',
+    'auth/invalid-recipient-email': 'That address was rejected as a recipient.',
+    'auth/invalid-action-code': 'That confirmation link has already been used, or it is not valid. Send a fresh one.',
+    'auth/expired-action-code': 'That confirmation link has expired. Send a fresh one.',
+    'auth/user-token-expired': 'Your session expired. Sign in again.',
+    'auth/quota-exceeded': 'The project has sent all the emails it is allowed to today. Try again tomorrow.',
   };
   if (map[code]) return map[code];
   const message = (err as { message?: string } | null)?.message;
@@ -148,23 +161,98 @@ export async function signInWithPassword(email: string, password: string): Promi
   await signInWithEmailAndPassword(svc.auth, email.trim(), password);
 }
 
-export async function registerWithPassword(email: string, password: string, name?: string): Promise<void> {
+/**
+ * Sends the confirmation email, and says what happened.
+ *
+ * It deliberately does not throw. The account exists either way, and a thrown
+ * error here would read as "registration failed" and send someone round to
+ * create it a second time — which is one of the ways Firebase's rate limiter
+ * gets tripped in the first place. The outcome is returned instead, and the
+ * screen that asks the user to check their inbox says what actually happened.
+ */
+export async function sendVerification(force = false): Promise<VerificationState> {
+  const svc = await services();
+  const user = svc?.auth.currentUser;
+  if (!user) return { error: 'You are not signed in.', triedAt: Date.now() };
+  if (user.emailVerified) {
+    clearState(user.uid);
+    return { alreadyVerified: true };
+  }
+
+  const state = loadState(user.uid);
+  if (!shouldSend(state, Date.now(), force)) return state;
+
+  const { sendEmailVerification } = await import('firebase/auth');
+
+  // Bring the reader back to the app rather than to Firebase's own page. The
+  // continue URL has to be an authorised domain, so a project that has not had
+  // this one added would otherwise fail to send at all — hence the retry below.
+  const settings =
+    typeof window !== 'undefined' ? { url: `${window.location.origin}/`, handleCodeInApp: false } : undefined;
+
+  try {
+    await sendEmailVerification(user, settings);
+    const sent = recordSent();
+    saveState(user.uid, sent);
+    return sent;
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    if (settings && (code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri')) {
+      // The link cannot come back here, but the email itself still matters.
+      try {
+        await sendEmailVerification(user);
+        const sent = recordSent();
+        saveState(user.uid, sent);
+        return sent;
+      } catch (plain) {
+        const failed = recordFailure(
+          (plain as { code?: string } | null)?.code,
+          authErrorMessage(plain),
+          state,
+          Date.now(),
+          !force,
+        );
+        saveState(user.uid, failed);
+        return failed;
+      }
+    }
+    const failed = recordFailure(code, authErrorMessage(err), state, Date.now(), !force);
+    saveState(user.uid, failed);
+    return failed;
+  }
+}
+
+export async function registerWithPassword(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<VerificationState> {
   const svc = await services();
   if (!svc) throw new Error('Cloud sync is not configured in this build.');
-  const { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } = await import('firebase/auth');
+  const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
   const cred = await createUserWithEmailAndPassword(svc.auth, email.trim(), password);
   if (name?.trim()) await updateProfile(cred.user, { displayName: name.trim() }).catch(() => undefined);
   // Registration is open, but the address still has to be proven: the security
   // rules refuse to read or write anything until email_verified is true.
-  await sendEmailVerification(cred.user).catch(() => undefined);
+  return sendVerification();
 }
 
-/** Sends the verification email again, for someone who lost the first one. */
-export async function resendVerification(): Promise<void> {
-  const svc = await services();
-  if (!svc?.auth.currentUser) throw new Error('Not signed in.');
-  const { sendEmailVerification } = await import('firebase/auth');
-  await sendEmailVerification(svc.auth.currentUser);
+/** Sends it again, for someone who never received the first one. */
+export async function resendVerification(): Promise<VerificationState> {
+  return sendVerification(true);
+}
+
+/** What the last attempt for this account did, for the screen to report. */
+export function verificationState(uid: string): VerificationState {
+  return loadState(uid);
+}
+
+export function verificationCooldownMs(uid: string): number {
+  return remainingCooldownMs(loadState(uid));
+}
+
+export function verificationIsPermanent(uid: string): boolean {
+  return isPermanent(loadState(uid).code);
 }
 
 /** Re-reads the account from Firebase, to pick up a verification done elsewhere. */

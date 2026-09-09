@@ -44,9 +44,12 @@ export function SignIn() {
     }
     if (!email.trim()) return setError('Enter your email address.');
     if (password.length < 6) return setError('Password must be at least 6 characters.');
-    return void run(() =>
-      mode === 'register' ? registerWithPassword(email, password, name) : signInWithPassword(email, password),
-    );
+    return void run(async () => {
+      if (mode !== 'register') return signInWithPassword(email, password);
+      // The account is created either way; whether the confirmation email got
+      // out is reported on the screen that follows, which is where it matters.
+      await registerWithPassword(email, password, name);
+    });
   };
 
   return (
