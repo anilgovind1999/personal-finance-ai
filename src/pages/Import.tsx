@@ -8,8 +8,8 @@ import { IconAlert, IconCheck, IconDownload, IconLedger } from '@/components/Ico
 import { formatMoney, uid } from '@/lib/utils';
 import { track } from '@/sync/analytics';
 import {
-  buildRows, detectColumns, FIELD_LABEL, parseDelimited, readFile, summarise,
-  type ColumnMap, type FieldName, type ImportRow, type RawTable,
+  buildRows, detectColumns, FIELD_LABEL, parseDelimited, PdfPasswordRequired, readFile,
+  summarise, type ColumnMap, type FieldName, type ImportRow, type RawTable,
 } from '@/import';
 
 /**
@@ -41,6 +41,10 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
   const [sourceName, setSourceName] = useState('');
   const [pasted, setPasted] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** A locked PDF, held so it can be opened again once the password is known. */
+  const [locked, setLocked] = useState<{ file: File; wrong: boolean } | null>(null);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
   /** Rows the person has unticked or re-ticked by hand. */
   const [overrides, setOverrides] = useState<Record<number, boolean>>({});
   /** Categories the person has corrected on the preview. */
@@ -62,13 +66,25 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
     setError(null);
   };
 
-  const onFile = async (file: File) => {
+  const onFile = async (file: File, pw?: string) => {
+    setBusy(true);
     try {
-      accept(await readFile(file), file.name);
-      void track('feature_used', { feature: 'import', source: 'file' });
+      accept(await readFile(file, pw), file.name);
+      setLocked(null);
+      setPassword('');
+      void track('feature_used', { feature: 'import', source: file.name.endsWith('.pdf') ? 'pdf' : 'file' });
     } catch (err) {
       setTable(null);
-      setError(err instanceof Error ? err.message : 'That file could not be read.');
+      if (err instanceof PdfPasswordRequired) {
+        // Not a failure — the file is fine, it just needs its password.
+        setLocked({ file, wrong: err.wrongPassword });
+        setError(null);
+      } else {
+        setLocked(null);
+        setError(err instanceof Error ? err.message : 'That file could not be read.');
+      }
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -139,18 +155,19 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
         subtitle="Bring in history you already have, rather than typing it again"
       >
         <p className="text-xs leading-relaxed text-muted">
-          Export your data from whatever you use now — most trackers offer CSV or Excel — or download a
-          statement from your bank's net banking. Drop the file here and FinSight will work out what the
-          columns mean. Nothing is added until you have seen every row.
+          Export your data from whatever you use now — most trackers offer CSV or Excel — or use a
+          statement from your bank, as a PDF or a CSV download. Choose the file and FinSight will work out
+          what the columns mean. Everything is read on your device; nothing is uploaded. Nothing is added
+          to your ledger until you have seen every row.
         </p>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <label className="btn-primary cursor-pointer justify-center">
-            <IconDownload width={16} height={16} /> Choose a CSV or Excel file
+            <IconDownload width={16} height={16} /> {busy ? 'Reading…' : 'Choose a CSV, Excel or PDF file'}
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.tsv,.txt,.xlsx,.xlsm"
+              accept=".csv,.tsv,.txt,.xlsx,.xlsm,.pdf"
               className="sr-only"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -179,11 +196,43 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
           </p>
         )}
 
+        {locked && (
+          <div className="mt-3 rounded-xl border border-warning/40 bg-warning/10 p-3">
+            <p className="text-xs font-semibold text-ink">
+              {locked.wrong ? 'That password did not open the file.' : 'This statement is password protected.'}
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+              Banks usually build it from your date of birth, your PAN, or your customer ID — the covering
+              email says which. It is used here on your device and never stored or sent anywhere.
+            </p>
+            <form
+              className="mt-2 flex flex-wrap gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (password) void onFile(locked.file, password);
+              }}
+            >
+              <input
+                type="password"
+                className="input max-w-56"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Statement password"
+                aria-label="Statement password"
+                autoFocus
+              />
+              <Button variant="primary" type="submit" disabled={!password || busy}>
+                {busy ? 'Opening…' : 'Unlock'}
+              </Button>
+            </form>
+          </div>
+        )}
+
         {!table && (
           <div className="mt-4 border-t border-line pt-3">
             <Field
               label="Or paste the rows"
-              hint="Copy the table out of a PDF statement or a spreadsheet and paste it here."
+              hint="Anything laid out in columns: rows copied from a website, a spreadsheet, or an email."
             >
               <textarea
                 className="input min-h-28 font-mono text-[11px]"
@@ -316,7 +365,7 @@ export function Import({ onNavigate }: { onNavigate: (r: Route) => void }) {
           <EmptyState
             icon={<IconLedger width={30} height={30} />}
             title="Nothing loaded yet"
-            detail="CSV and Excel files work directly. PDF statements need to be downloaded again as CSV from your bank, or the rows copied and pasted above."
+            detail="CSV, Excel and PDF statements are all read here, including password-protected ones. A scanned statement has no text in it to read — for those, download the CSV from your bank instead."
           />
         </Card>
       )}

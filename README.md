@@ -22,9 +22,9 @@ upload.
 ## Feature summary
 
 **Getting your data in**
-- **Import** reads a CSV or Excel export from another tracker, or a statement
-  downloaded from your bank, works out what its columns mean, and shows you
-  every row before anything is written.
+- **Import** reads a CSV, Excel or PDF export from another tracker, or a
+  statement from your bank — password-protected PDFs included — works out what
+  its columns mean, and shows you every row before anything is written.
 - Re-importing an overlapping period is safe: rows already in the ledger are
   marked and unticked.
 - Or paste a bank SMS, an email, or a UPI message and let the on-device engine
@@ -143,7 +143,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 265 unit tests
+npm test         # 282 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -407,10 +407,34 @@ disagree — is marked *already have this* and unticked. Overlapping statements 
 a month downloaded twice are the normal case, not the exception. The rows are
 still there to tick back on.
 
-**PDF statements are not read directly.** A PDF is a picture of a table, not a
-table, and a half-read statement is worse than a clear refusal — so the app says
-so and points at the CSV download every net banking site offers, or the paste
-box, which takes rows copied out of a PDF viewer.
+**PDF statements are read too, including locked ones.** Banks here email
+statements as password-protected PDFs, so both the reading and the unlocking have
+to work or the feature is decorative. A wrong password says so and lets you try
+again; the password is used on the device and never stored or sent.
+
+A PDF has no rows and no columns — it has glyphs at coordinates, and a statement
+only *looks* like a table because a person reads alignment as structure. The
+reader does the same thing geometrically: text sharing a baseline is one line,
+and text that lines up down the page is one column. Two details matter more than
+they sound:
+
+- **Columns are found from the whole page, not line by line.** A row with an
+  empty deposit column is indistinguishable, on its own, from a row with one
+  fewer column. Seen against the page, it becomes a row with an empty cell —
+  which is the difference between money out and money in.
+- **A sparse column is still a column.** Deposits are rarer than withdrawals, so
+  a rule that discarded rarely-used columns as noise would drop the deposit
+  column on a page with one salary credit, and that figure would land in the
+  withdrawal column beside it — turning income into an expense. Every column is
+  kept; a spurious one stays empty and is marked "don't import".
+
+pdf.js is loaded only when a PDF is actually opened, and its worker is inlined
+into the bundle rather than fetched, so nothing touches the network at the moment
+a statement is read.
+
+**A scanned statement has no text to read** — it is an image of a page. The app
+says so rather than returning nothing, and points at the CSV download every net
+banking site offers.
 
 ### Cross-referencing SMS against email
 
@@ -476,6 +500,8 @@ erases everything.
  src/engine/ocr/receipt.test.ts     10  receipt field extraction
  src/export/exporters.test.ts        8  report building and CSV escaping
  src/sync/analytics.test.ts          8  that financial data cannot reach Analytics
+ src/import/pdf.test.ts             10  rebuilding a table from positioned PDF text
+ src/import/pdf-roundtrip.test.ts    6  producing a real PDF and reading it back
  src/import/sheet.test.ts            4  reading a real .xlsx workbook
 ```
 
