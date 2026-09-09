@@ -426,8 +426,8 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
           </Button>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/12 text-xs font-bold text-accent">
-            G
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/12 text-[11px] font-bold tracking-tight text-accent">
+            AG
           </span>
           <p className="text-xs font-semibold text-ink">
             Created by Govind

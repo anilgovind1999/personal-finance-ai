@@ -68,8 +68,9 @@ export function services(): Promise<Services | null> {
     ]);
     const app = getApps()[0] ?? initializeApp(config);
     const auth = authMod.getAuth(app);
-    // Keeps the session across reloads and lets Firestore serve from cache
-    // while offline, so the app still opens on a train.
+    // Stays signed in across reloads by default, and lets Firestore serve from
+    // cache while offline, so the app still opens on a train. The sign-in screen
+    // can narrow this to the tab before someone signs in.
     await authMod.setPersistence(auth, authMod.browserLocalPersistence).catch(() => undefined);
     let db: Firestore;
     try {
@@ -131,8 +132,9 @@ export function authErrorMessage(err: unknown): string {
     'auth/missing-password': 'Enter your password.',
     'auth/weak-password': 'Choose a password of at least 6 characters.',
     'auth/email-already-in-use': 'An account already exists for that email — sign in instead.',
-    'auth/invalid-credential': 'Email or password is not right.',
-    'auth/wrong-password': 'Email or password is not right.',
+    'auth/invalid-credential':
+      'Email or password is not right. If you created this account with Google, use “Continue with Google” — or send yourself a reset link to set a password.',
+    'auth/wrong-password': 'That password is not right for this address.',
     'auth/user-not-found': 'No account for that email — create one instead.',
     'auth/too-many-requests': 'Too many attempts. Wait a minute and try again.',
     'auth/network-request-failed': 'Could not reach the server. Check your connection.',
@@ -263,6 +265,78 @@ export async function refreshAccount(): Promise<AccountInfo | null> {
   await user.reload();
   await user.getIdToken(true);
   return toAccount(user);
+}
+
+/**
+ * Whether the session survives closing the browser.
+ *
+ * Must be set before signing in — Firebase applies persistence to the sign-in
+ * that follows, not retroactively. Someone on a shared machine can turn it off
+ * and be signed out when the tab closes.
+ */
+export async function setStaySignedIn(stay: boolean): Promise<void> {
+  const svc = await services();
+  if (!svc) return;
+  const { setPersistence, browserLocalPersistence, browserSessionPersistence } = await import('firebase/auth');
+  await setPersistence(svc.auth, stay ? browserLocalPersistence : browserSessionPersistence).catch(
+    () => undefined,
+  );
+}
+
+export interface LinkResult {
+  verified: boolean;
+  error?: string;
+}
+
+/**
+ * Proves the address by attaching the Google account that owns it.
+ *
+ * Google has already checked that this person can read this mailbox, which is
+ * the same thing the confirmation email is for. So when the email never
+ * arrives — a full daily quota, a spam filter, a mistyped address — this is a
+ * way through that gives up nothing: the security rules still demand a verified
+ * address, and the address is genuinely verified.
+ *
+ * Only the same address will do. A Google account under a different email links
+ * a second identity to the login without proving the first one, so Firebase
+ * refuses it and so does this.
+ */
+export async function verifyWithGoogle(): Promise<LinkResult> {
+  const svc = await services();
+  const user = svc?.auth.currentUser;
+  if (!user) return { verified: false, error: 'You are not signed in.' };
+
+  const { GoogleAuthProvider, linkWithPopup, reload } = await import('firebase/auth');
+  const provider = new GoogleAuthProvider();
+  if (user.email) provider.setCustomParameters({ login_hint: user.email });
+
+  try {
+    await linkWithPopup(user, provider);
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    // Already attached: nothing to do but re-read, which is the next step anyway.
+    if (code !== 'auth/provider-already-linked') {
+      if (code === 'auth/credential-already-in-use' || code === 'auth/email-already-in-use') {
+        return {
+          verified: false,
+          error:
+            'That Google account is already a separate FinSight account. Sign out and use “Continue with Google” instead.',
+        };
+      }
+      return { verified: false, error: authErrorMessage(err) };
+    }
+  }
+
+  // Linking a provider that vouches for the same address is what marks it
+  // verified; re-read rather than assume, and say so plainly if it did not.
+  await reload(user);
+  await user.getIdToken(true);
+  if (user.emailVerified) return { verified: true };
+  return {
+    verified: false,
+    error:
+      'Google signed in, but the address is still not marked confirmed. Use the emailed link instead.',
+  };
 }
 
 export async function signInWithGoogle(): Promise<void> {

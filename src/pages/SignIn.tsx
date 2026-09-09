@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button, Card, cx } from '@/components/ui/Primitives';
 import { IconShield, IconSparkles } from '@/components/Icons';
 import {
-  authErrorMessage, registerWithPassword, sendReset, signInWithGoogle, signInWithPassword,
+  authErrorMessage, registerWithPassword, sendReset, setStaySignedIn, signInWithGoogle,
+  signInWithPassword,
 } from '@/sync/firebase';
 
 type Mode = 'signin' | 'register' | 'reset';
@@ -22,12 +23,16 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  /** Off only for a shared machine; the session otherwise survives closing the browser. */
+  const [stay, setStay] = useState(true);
 
   const run = async (fn: () => Promise<void>, done?: string) => {
     setBusy(true);
     setError('');
     setNotice('');
     try {
+      // Persistence applies to the sign-in that follows, so it is set first.
+      await setStaySignedIn(stay);
       await fn();
       if (done) setNotice(done);
     } catch (err) {
@@ -107,6 +112,18 @@ export function SignIn() {
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
                 />
+              </label>
+            )}
+
+            {mode !== 'reset' && (
+              <label className="flex items-center gap-2 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={stay}
+                  onChange={(e) => setStay(e.target.checked)}
+                  className="h-4 w-4 accent-[var(--accent)]"
+                />
+                Keep me signed in on this device
               </label>
             )}
 

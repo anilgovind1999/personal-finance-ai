@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Route } from './Shell';
 import { Button, Modal } from './ui/Primitives';
 import {
-  IconCamera, IconChart, IconCheck, IconInbox, IconMessage, IconShield, IconWallet,
+  IconCamera, IconChart, IconCheck, IconDownload, IconInbox, IconMessage, IconShield, IconWallet,
 } from './Icons';
 
 /**
@@ -13,8 +13,9 @@ import {
  * than as the point, so this runs once, before the empty dashboard, and says
  * what the app expects of them and what it does in return.
  *
- * It is six short cards, skippable at any step, and can be replayed from
- * Settings. It never appears again on its own.
+ * It is seven short cards, skippable at any step, and can be replayed from
+ * Settings. It never appears again on its own. The last one covers putting the
+ * app on the home screen, which is the step people otherwise never find.
  */
 
 interface Step {
@@ -24,6 +25,28 @@ interface Step {
   /** Where "Show me" takes them, when there is somewhere useful to go. */
   route?: Route;
   cta?: string;
+}
+
+/**
+ * How this particular device adds an app to its home screen.
+ *
+ * Every platform hides it somewhere different, and generic advice to "install
+ * the app" is what makes people give up. iOS has no install API at all, so the
+ * only honest thing there is to name the two taps.
+ */
+function installHowTo(): string {
+  if (typeof navigator === 'undefined') return '';
+  const ua = navigator.userAgent;
+  const ios = /iphone|ipad|ipod/i.test(ua);
+  const android = /android/i.test(ua);
+
+  if (ios) {
+    return 'On iPhone and iPad, open FinSight in Safari, tap the Share button at the bottom — the square with an arrow — scroll down and tap “Add to Home Screen”, then Add. It has to be Safari; Chrome on iOS cannot do it.';
+  }
+  if (android) {
+    return 'On Android, tap the three-dot menu in Chrome and choose “Install app” or “Add to Home screen”, then Install. FinSight will also offer you a button when it is ready.';
+  }
+  return 'On a computer, look for the install icon at the right-hand end of Chrome or Edge’s address bar, or use the three-dot menu and choose “Install FinSight”. It then opens in its own window, without browser tabs.';
 }
 
 const STEPS: Step[] = [
@@ -66,6 +89,11 @@ const STEPS: Step[] = [
     title: 'Mistakes are recoverable',
     body:
       'Deleting asks first, every change is written to a history you can read, and anything you remove sits in the recycle bin for 30 days. You can also export a full backup at any time from Settings.',
+  },
+  {
+    icon: <IconDownload width={26} height={26} />,
+    title: 'Put it on your home screen',
+    body: `${installHowTo()} It then opens like any other app — its own icon, no address bar, and it still works with no signal.`,
   },
 ];
 

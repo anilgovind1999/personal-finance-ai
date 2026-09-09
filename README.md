@@ -229,6 +229,20 @@ the button is disabled.
 so the new `email_verified` claim is in it, then unlocks. When the address still
 is not confirmed it says so, rather than appearing to do nothing.
 
+**Confirming with Google, when the email will not come.** The gate also offers
+*Confirm with Google instead*, which links the Google account owning that same
+address to the login. Google has already checked the person can read that
+mailbox, which is the same thing the confirmation email is for — so this gives up
+nothing: the rules still demand a verified address, and it genuinely is one. Only
+the same address will do; a different one would attach a second identity without
+proving the first. It is done once, and email and password sign in directly ever
+after.
+
+**Staying signed in.** The session persists across reloads and restarts by
+default. *Keep me signed in on this device* on the sign-in screen turns that down
+to the tab, for a shared machine. Persistence is set before the sign-in it
+applies to, since Firebase does not apply it retroactively.
+
 The link carries a continue URL back to the app. That URL has to be an authorised
 domain, so if the project has not had this one added the send would fail outright;
 it retries once without the continue URL rather than sending nothing.
@@ -417,9 +431,12 @@ carried by colour alone. Status colours are paired with an icon and a label.
 
 ### First run
 
-A new user is shown a six-card tutorial before anything else: what the app is,
+A new user is shown a seven-card tutorial before anything else: what the app is,
 how to paste a bank message, the receipt scanner, why nothing counts until they
-approve it, what the analytics give them, and how mistakes are recovered. It is
+approve it, what the analytics give them, how mistakes are recovered, and how to put
+the app on the home screen — with the instructions for the device actually in
+their hand, since iPhone, Android and desktop each hide it somewhere different
+and generic "install the app" advice is what makes people give up. It is
 skippable at any point, never appears again on its own, and can be replayed from
 **Settings → Show the tutorial again**.
 

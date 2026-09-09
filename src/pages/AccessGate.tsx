@@ -3,7 +3,7 @@ import { Button, Card } from '@/components/ui/Primitives';
 import { IconShield, IconSparkles } from '@/components/Icons';
 import {
   refreshAccount, resendVerification, sendVerification, verificationCooldownMs, verificationState,
-  type AccountInfo,
+  verifyWithGoogle, type AccountInfo,
 } from '@/sync/firebase';
 import { autoAttemptsSpent, isPermanent, type VerificationState } from '@/sync/verification';
 
@@ -27,6 +27,7 @@ export function AccessGate({
   const [cooldown, setCooldown] = useState(() => verificationCooldownMs(account.uid));
   /** What the last "I've verified" press found, when it did not unlock. */
   const [checkResult, setCheckResult] = useState('');
+  const [linking, setLinking] = useState(false);
 
   // An account that arrived here without a successful send — the first attempt
   // failed, or the app was reopened later — gets one now. sendVerification will
@@ -158,6 +159,29 @@ export function AccessGate({
               Firebase's — sending faster than this is what makes it refuse to send at all.
             </p>
           )}
+
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="text-xs font-semibold text-ink">Not getting the email?</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+              If <strong className="text-ink">{account.email}</strong> is a Google address, signing in with
+              Google confirms it immediately — Google has already checked you can read that mailbox. You
+              only do this once; afterwards your email and password sign you straight in.
+            </p>
+            <Button
+              className="mt-2"
+              disabled={linking}
+              onClick={async () => {
+                setLinking(true);
+                setCheckResult('');
+                const result = await verifyWithGoogle();
+                if (result.verified) onRecheck();
+                else setCheckResult(result.error ?? 'That did not confirm the address.');
+                setLinking(false);
+              }}
+            >
+              {linking ? 'Opening Google…' : 'Confirm with Google instead'}
+            </Button>
+          </div>
 
           <div className="mt-4 border-t border-line pt-3">
             <button type="button" onClick={onSignOut} className="text-xs font-semibold text-accent hover:underline">
