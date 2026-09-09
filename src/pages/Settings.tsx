@@ -8,7 +8,7 @@ import { CURRENCIES } from '@/data/currencies';
 import { fetchRates, ratesAreStale } from '@/engine/currency';
 import { analyticsAvailable } from '@/sync/analytics';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { IconChevron, IconDownload, IconShield, IconTrash } from '@/components/Icons';
+import { IconChevron, IconDownload, IconImport, IconShield, IconTrash } from '@/components/Icons';
 import { migrate } from '@/store/reducer';
 import { buildDemoState, DEMO_MESSAGES } from '@/store/demoData';
 import { isOwner } from '@/sync/admin';
@@ -390,6 +390,9 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
+          <Button onClick={() => onNavigate('import')}>
+            <IconImport width={16} height={16} /> Import from another app or bank
+          </Button>
           <Button onClick={() => void exportBackup()}><IconDownload width={16} height={16} /> Export backup (JSON)</Button>
           <label className="btn-ghost cursor-pointer">
             Restore from backup

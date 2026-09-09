@@ -21,6 +21,15 @@ upload.
 
 ## Feature summary
 
+**Getting your data in**
+- **Import** reads a CSV or Excel export from another tracker, or a statement
+  downloaded from your bank, works out what its columns mean, and shows you
+  every row before anything is written.
+- Re-importing an overlapping period is safe: rows already in the ledger are
+  marked and unticked.
+- Or paste a bank SMS, an email, or a UPI message and let the on-device engine
+  read it. Or photograph a receipt.
+
 **Currency**
 - Every total, budget and report is counted in one home currency, INR by
   default and changeable in Settings.
@@ -134,7 +143,7 @@ npm run dev      # http://localhost:5173
 ```bash
 npm run build    # typecheck + production build into dist/
 npm run preview  # serve the production build
-npm test         # 226 unit tests
+npm test         # 265 unit tests
 ```
 
 `npm install` and `npm run build` also run `scripts/vendor-ocr.mjs`, which copies
@@ -356,6 +365,53 @@ Whenever sample data is loaded, the dashboard says so in a banner with a
 made for themselves — theme, currency, alert thresholds — and does not make them
 sit through the tutorial again.
 
+### Importing from another app or your bank
+
+Someone arriving with months of history in another tracker should not have to
+retype it, so **Import** reads a CSV or Excel export and turns it into
+transactions. It also reads bank statement downloads, which are the same problem
+wearing a different hat.
+
+No two exports agree on anything, so the reader is built to be forgiving:
+
+- **The delimiter is detected**, not assumed — comma, semicolon or tab.
+- **The header row is found**, so a statement's account summary and blank lines
+  above the table are skipped. A header is recognised by its cells being words
+  where the rows below are dates and figures.
+- **Columns are mapped by name where the header says something** (`Withdrawal
+  Amt`, `Narration`, `Payment Method`) and by the shape of their values where it
+  does not — a column of parseable dates is a date column whatever it is called.
+- **Dates**: ISO, day-first, month names, and unformatted Excel serial numbers.
+  `03/04/2026` is genuinely ambiguous, so the convention is worked out for the
+  column as a whole by finding a value that can only be read one way, stated on
+  screen, and switchable.
+- **Amounts**: `₹1,23,456.78`, `(486.00)`, `486.00 Dr`, `-486`, and separate
+  money-in/money-out columns. A file offering both a signed amount and a
+  debit/credit pair uses the pair, since counting both would double the ledger.
+- **Categories** come from the file when it has them. A bank statement never
+  does, so the app's own merchant lexicon and keyword scoring fill them in — and
+  every inferred category is marked on the preview, because that is the field it
+  is most likely to get wrong.
+
+**Nothing is imported unseen.** The preview lists every row that will be created,
+with its date, merchant, category and amount; rows can be unticked and categories
+corrected before anything is written. Rows that cannot be read are shown with the
+reason rather than silently dropped. This screen is why imported entries go
+straight to the ledger instead of the approval queue: the review has happened, in
+bulk, where reviewing 300 statement rows one at a time would not be a review at
+all.
+
+**Re-importing is safe.** Any row matching a ledger entry on the same date, the
+same direction and the same amount — with descriptions that do not actively
+disagree — is marked *already have this* and unticked. Overlapping statements and
+a month downloaded twice are the normal case, not the exception. The rows are
+still there to tick back on.
+
+**PDF statements are not read directly.** A PDF is a picture of a table, not a
+table, and a half-read statement is worse than a clear refusal — so the app says
+so and points at the CSV download every net banking site offers, or the paste
+box, which takes rows copied out of a PDF viewer.
+
 ### Cross-referencing SMS against email
 
 One purchase often announces itself twice: the bank texts the moment the card is
@@ -412,6 +468,7 @@ erases everything.
  src/engine/income-recurring.test.ts 22 income tracking and recurring rules
  src/engine/reconcile.test.ts       20  SMS/email cross-referencing and its limits
  src/engine/parser/bank-sms.test.ts 19  real-world bank SMS shapes
+ src/import/import.test.ts          35  reading other apps' exports and bank statements
  src/store/audit.test.ts            17  the audit trail and recycle bin
  src/engine/currency.test.ts        16  multi-currency conversion
  src/sync/model.test.ts             16  two-device merge semantics
@@ -419,6 +476,7 @@ erases everything.
  src/engine/ocr/receipt.test.ts     10  receipt field extraction
  src/export/exporters.test.ts        8  report building and CSV escaping
  src/sync/analytics.test.ts          8  that financial data cannot reach Analytics
+ src/import/sheet.test.ts            4  reading a real .xlsx workbook
 ```
 
 Plus two end-to-end browser passes, both run against the production build served

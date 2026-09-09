@@ -12,6 +12,7 @@ import { Accounts } from '@/pages/Accounts';
 import { Reports } from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
 import { Activity } from '@/pages/Activity';
+import { Import } from '@/pages/Import';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { SignIn } from '@/pages/SignIn';
 import { AccessGate } from '@/pages/AccessGate';
@@ -22,7 +23,7 @@ import { Tour } from '@/components/Tour';
 
 const ROUTES: Route[] = [
   'dashboard', 'transactions', 'capture', 'approvals', 'analytics',
-  'budgets', 'goals', 'accounts', 'reports', 'activity', 'settings',
+  'budgets', 'goals', 'accounts', 'reports', 'activity', 'import', 'settings',
 ];
 
 function routeFromHash(): Route {
@@ -103,6 +104,7 @@ function Router() {
       {route === 'accounts' && <Accounts />}
       {route === 'reports' && <Reports />}
       {route === 'activity' && <Activity />}
+      {route === 'import' && <Import onNavigate={navigate} />}
       {route === 'settings' && <Settings onNavigate={navigate} />}
       <QuickAdd open={quickAdd} onClose={() => setQuickAdd(false)} />
       {/* Shown once, before the empty dashboard, and replayable from Settings. */}

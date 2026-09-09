@@ -36,7 +36,7 @@ export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
 export type FeatureName =
   | 'manual_entry' | 'ai_message_capture' | 'receipt_scan' | 'recurring_rule'
   | 'budget_set' | 'goal_created' | 'search' | 'export' | 'backup' | 'restore'
-  | 'currency_changed' | 'live_rates' | 'restore_from_bin';
+  | 'currency_changed' | 'live_rates' | 'restore_from_bin' | 'import';
 
 export interface AnalyticsParams {
   /** Which screen or feature, from a fixed vocabulary. */

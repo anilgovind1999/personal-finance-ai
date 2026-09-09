@@ -86,6 +86,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: Route) => void }) {
                 <Button onClick={() => dispatch({ type: 'settings/update', settings: { onboarded: false } })}>
                   Take the tour
                 </Button>
+                <Button onClick={() => onNavigate('import')}>Import existing data</Button>
                 {owner && <Button onClick={loadDemo}>Load sample data</Button>}
               </div>
             }

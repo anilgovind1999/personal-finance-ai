@@ -3,12 +3,12 @@ import { useStore } from '@/store/AppStore';
 import { cx } from '@/components/ui/Primitives';
 import {
   IconBudget, IconChart, IconDashboard, IconInbox, IconLedger, IconMoon, IconPlus,
-  IconReport, IconSettings, IconShield, IconSparkles, IconSun, IconTarget, IconWallet,
+  IconImport, IconReport, IconSettings, IconShield, IconSparkles, IconSun, IconTarget, IconWallet,
 } from '@/components/Icons';
 
 export type Route =
   | 'dashboard' | 'transactions' | 'capture' | 'approvals' | 'analytics'
-  | 'budgets' | 'goals' | 'accounts' | 'reports' | 'activity' | 'settings';
+  | 'budgets' | 'goals' | 'accounts' | 'reports' | 'activity' | 'import' | 'settings';
 
 interface NavItem {
   route: Route;
@@ -29,6 +29,7 @@ export const NAV: NavItem[] = [
   { route: 'accounts', label: 'Accounts', icon: IconWallet },
   { route: 'reports', label: 'Reports', icon: IconReport },
   { route: 'activity', label: 'Activity', icon: IconShield },
+  { route: 'import', label: 'Import', icon: IconImport },
   { route: 'settings', label: 'Settings', icon: IconSettings },
 ];
 

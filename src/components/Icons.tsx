@@ -32,6 +32,7 @@ export const IconArrowDown = (p: P) => (<svg {...base} {...p}><path d="M12 5v14M
 export const IconAlert = (p: P) => (<svg {...base} {...p}><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>);
 export const IconInfo = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></svg>);
 export const IconTrendUp = (p: P) => (<svg {...base} {...p}><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></svg>);
+export const IconImport = (p: P) => (<svg {...base} {...p}><path d="M12 3v10M8 9l4 4 4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>);
 export const IconDownload = (p: P) => (<svg {...base} {...p}><path d="M12 3v12M7 11l5 5 5-5" /><path d="M4 20h16" /></svg>);
 export const IconFilter = (p: P) => (<svg {...base} {...p}><path d="M3 5h18l-7 8v6l-4-2v-4z" /></svg>);
 export const IconChevron = (p: P) => (<svg {...base} {...p}><path d="m9 18 6-6-6-6" /></svg>);
