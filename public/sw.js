@@ -6,7 +6,9 @@
  * so a deployed update is picked up, falling back to cache when offline.
  * Only same-origin GETs are touched; Firebase traffic is left alone.
  */
-const VERSION = 'finsight-v1';
+// Rewritten at build time with the commit id, so a new deploy never serves the
+// previous build's cached files — see scripts/build-stamp.ts.
+const VERSION = 'finsight-__BUILD_ID__';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {

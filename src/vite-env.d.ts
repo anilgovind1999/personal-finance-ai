@@ -14,3 +14,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** Commit this bundle was built from, stamped in by scripts/build-stamp.ts. */
+declare const __BUILD_ID__: string;
+/** When it was built, ISO 8601. */
+declare const __BUILD_TIME__: string;

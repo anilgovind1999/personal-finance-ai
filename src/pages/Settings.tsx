@@ -434,6 +434,12 @@ export function Settings({ onNavigate }: { onNavigate: (r: Route) => void }) {
           </p>
           <p className={cx('ml-auto text-[11px] text-subtle')}>Version 1.1.0 · All amounts in INR</p>
         </div>
+
+        {/* Which build this actually is. Without it, a stale deployment and a
+            broken fix look identical from the outside. */}
+        <p className="mt-2 select-all font-mono text-[11px] text-subtle">
+          build {__BUILD_ID__} · {new Date(__BUILD_TIME__).toLocaleString()}
+        </p>
       </Card>
 
       <Modal

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { buildStamp } from './scripts/build-stamp';
 
 const root = process.cwd();
 const stub = path.resolve(root, 'scripts/preview-stubs/unavailable.ts');
@@ -13,7 +14,7 @@ const stub = path.resolve(root, 'scripts/preview-stubs/unavailable.ts');
  * than bundled and left unreachable.
  */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), buildStamp()],
   base: './',
   define: { 'import.meta.env.VITE_SINGLE_FILE': JSON.stringify('1') },
   resolve: {

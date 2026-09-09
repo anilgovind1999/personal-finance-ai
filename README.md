@@ -243,6 +243,7 @@ exactly the hosts the app needs and nothing else:
 | `securetoken.googleapis.com` | Refreshing the session token |
 | `firestore.googleapis.com` | Reading and writing your ledger |
 | `firebaseinstallations.googleapis.com` | The Firebase SDK's own client registration |
+| `firebase.googleapis.com` | Config lookups some SDK paths make |
 | `open.er-api.com` | Currency rates, only if you turn live rates on |
 
 Google sign-in additionally needs `https://apis.google.com` in `script-src` and
@@ -254,7 +255,30 @@ particular to your project and these files are static. Pin it to your own —
 `https://your-project.firebaseapp.com` — and the last wildcard is gone.
 
 There are no `https:` or `*` sources anywhere in the policy, and `default-src`
-stays `'self'`.
+stays `'self'`. `netlify.toml`, `vercel.json` and `firebase.json` all send the
+same string; a check that they still match is worth running after any edit.
+
+`Cross-Origin-Opener-Policy` is `same-origin-allow-popups`, not `same-origin`.
+Plain `same-origin` severs `window.opener`, which is exactly the channel the
+Firebase sign-in popup uses to hand its result back to the page.
+
+### Which build is deployed
+
+Every build stamps itself with the commit it came from. A stale deployment and
+a broken fix look identical from the outside, so this is worth checking before
+debugging anything:
+
+```bash
+curl -s https://your-app.vercel.app/ | grep build-id
+# <meta name="build-id" content="ce080b4" />
+```
+
+The same id is at the bottom of **Settings**, under the version line. If it does
+not match `git rev-parse --short HEAD`, the site is running older code and no
+amount of fixing the source will change what the browser does.
+
+The service worker's cache is named after the build id too, so a new deploy can
+never serve the previous build's files.
 
 ### Shipping updates to people
 
