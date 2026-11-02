@@ -1,4 +1,10 @@
-# FinSight — AI-Powered Personal Finance & Expense Intelligence
+## Project Maintainer
+
+Maintained by anilgovind1999.
+
+An AI-powered personal finance application
+designed to simplify expense tracking and
+financial insights.# FinSight — AI-Powered Personal Finance & Expense Intelligence
 
 A personal finance manager that captures expenses, reads them out of messages and
 receipts, routes every AI-detected transaction through a **mandatory approval
